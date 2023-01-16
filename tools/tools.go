@@ -24,7 +24,8 @@ import (
 
 // KubectlResult is the result of a kubectl command
 type KubectlResult struct {
-	Out string
+	Verb string
+	Out  string
 }
 
 // Markdown is a struct that holds the content of a markdown file
@@ -55,7 +56,8 @@ func Kubectl(verb string, file string) tea.Cmd {
 			}
 		}
 		return KubectlResult{
-			Out: stdout.String(),
+			Out:  stdout.String(),
+			Verb: verb,
 		}
 	}
 }

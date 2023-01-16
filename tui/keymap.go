@@ -179,3 +179,13 @@ func (m *ListKeyMap) ErrorHelp() {
 		m.Quit,
 	}
 }
+
+// OnlyBackQuit sets the keymap for the simple view
+func (m *ListKeyMap) OnlyBackQuit() {
+	m.ActiveShortHelp = []key.Binding{
+		m.Back,
+		m.Quit,
+	}
+
+	m.ActiveFullHelp = [][]key.Binding{}
+}

@@ -47,6 +47,8 @@ type model struct {
 	markdown   md.Model
 
 	config config.Provider
+
+	k8sOutput string
 }
 
 // New returns a new model of the examples page.
@@ -122,6 +124,7 @@ func (m model) Init() tea.Cmd {
 
 // Update updates the model.
 // nolint: gocyclo // TODO: refactor
+// TODO show SetEnabled to enable/disable keys
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -180,12 +183,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.Print):
 			if m.viewName == pRessources {
+				m.viewName = pK8S
+				// m.k8sOutput = fmt.Sprintf("coucou %s", m.currentList.SelectedItem().(*tui.Example).Title())
 				m.viewName = pPrintActions
 				m.keys.YamlActionHelp()
 			}
+			return m, nil
 
 		case key.Matches(msg, m.keys.Help):
-			if m.viewName != pPrintActions {
+			if m.viewName != pPrintActions && m.viewName != pK8S {
 				m.footer.Help.ShowAll = !m.footer.Help.ShowAll
 				m.footer.Help.Width = m.width
 			}
@@ -216,7 +222,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply), key.Matches(msg, m.keys.Delete):
 			if m.viewName == pRessources {
-				m.viewName = pK8S
 				file := m.currentList.SelectedItem().(*tui.Example).Title()
 				extra := m.currentList.SelectedItem().(*tui.Example).HaveExtraFile()
 				secret := m.currentList.SelectedItem().(*tui.Example).HaveSecretFile()
@@ -237,7 +242,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				verb := "unknown"
 				switch {
 				case key.Matches(msg, m.keys.Get):
+					m.viewName = pK8S
+					m.keys.OnlyBackQuit()
 					verb = "get"
+
 				case key.Matches(msg, m.keys.Apply):
 					verb = "apply"
 				case key.Matches(msg, m.keys.Delete):
@@ -292,11 +300,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := m.currentList.NewStatusMessage("List tested generated")
 		return m, cmd
 
+	case tools.KubectlResult:
+		switch msg.Verb {
+		case "apply", "delete":
+			cmd := m.currentList.NewStatusMessage(fmt.Sprintf("kubectl %s ok", msg.Verb))
+			return m, cmd
+
+		case "get":
+			m.viewName = pK8S
+			m.k8sOutput = msg.Out
+		}
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
 	// Note that we're not returning a command.
-	if !m.errorRaised && m.viewName != pViewPort {
+	if m.viewName == pRoot || m.viewName == pRessources {
 		newListModel, cmd := m.currentList.Update(msg)
 		m.currentList = newListModel
 		cmds = append(cmds, cmd)
@@ -341,6 +359,15 @@ func (m model) View() string {
 				lipgloss.Center,
 				m.header.View(),
 				m.markdown.Viewport.View(),
+				m.footer.View(),
+			)
+
+		case pK8S:
+			get := lipgloss.NewStyle().Height(m.currentList.Height()).Render(m.k8sOutput)
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				m.header.View(),
+				get,
 				m.footer.View(),
 			)
 
