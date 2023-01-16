@@ -48,4 +48,14 @@ var (
 	BorderTop = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, false, false).
 			BorderForeground(BorderColour)
+
+	// StatusBarStyle = lipgloss.NewStyle().
+	// Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
+	// Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
+	NotificationStyle = lipgloss.NewStyle().
+		// Inherit(StatusBarStyle).
+		Foreground(lipgloss.Color(RedColour))
+	// Background(lipgloss.Color("#FF5F87"))
+	// Padding(0, 1).
+	// MarginRight(1)
 )

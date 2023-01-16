@@ -3,6 +3,7 @@ package header
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/FrangipaneTeam/bean/config"
@@ -26,6 +27,7 @@ type Model struct {
 	notifyCrds             chan pages.NotifyActivity
 	notifyExamples         chan pages.NotifyActivity
 	Width, Height          int
+	Notification           string
 	// errorPanel             errorpanel.Model
 	// errorRaised            bool
 	config config.Provider
@@ -129,15 +131,10 @@ func (m Model) View() string {
 		tui.FeintTextStyle.Padding(0, 0, 0, 2).Render(m.Description),
 	)
 
-	var err string
-	// if m.errorRaised {
-	// 	err = "\n\n" + m.errorPanel.View()
-	// }
-
 	header := ""
 	// nolint: gocritic // TODO: try to change the logic to avoid this
 	if !m.crdRecentActivity && !m.examplesRecentActivity {
-		header = fmt.Sprintf("%s Watching CRD files", m.spinner.View())
+		header = fmt.Sprintf("%s Watch for new crd/examples files", m.spinner.View())
 	} else if m.crdRecentActivity {
 		c := lipgloss.NewStyle().Foreground(tui.SpinnerColour).Render("→")
 		header = fmt.Sprintf("%s New CRD files %s %s %ds ago", m.spinner.View(), c, "Updated", m.hideNotify)
@@ -145,11 +142,31 @@ func (m Model) View() string {
 		c := lipgloss.NewStyle().Foreground(tui.SpinnerColour).Render("→")
 		header = fmt.Sprintf("%s New examples %s %s %ds ago", m.spinner.View(), c, "Updated", m.hideNotify)
 	}
+
+	notification := strings.Builder{}
+
+	if m.Notification != "" {
+		t := strings.Trim(m.Notification, "\n")
+		fmt.Fprintf(&notification, "• %s", t)
+	}
+
+	header = lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		lipgloss.NewStyle().Width(m.Width/2).Align(lipgloss.Left).Render(header),
+		tui.NotificationStyle.
+			Width(m.Width/2).
+			Align(lipgloss.Right).
+			Render(notification.String()),
+	)
+
 	banner := lipgloss.JoinVertical(
-		lipgloss.Left,
-		lipgloss.NewStyle().MarginBottom(1).Render(nameVersion),
-		lipgloss.NewStyle().Render(header),
-		err,
+		lipgloss.Center,
+		lipgloss.NewStyle().
+			MarginBottom(1).
+			Width(m.Width-4).
+			Align(lipgloss.Center).
+			Render(nameVersion),
+		header,
 	)
 	border := tui.BorderBottom.Width(m.Width).Render(banner)
 

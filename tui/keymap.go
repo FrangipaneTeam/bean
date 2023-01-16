@@ -145,8 +145,21 @@ func (m *ListKeyMap) YamlHelp() {
 		{m.UpDown, m.LeftRight, m.Back},
 		{m.ForwardSlash, m.Enter},
 		{m.Help, m.Quit},
-		{m.Apply, m.Delete, m.Print, m.Get, m.ShowDependanciesFiles},
+		{m.Apply, m.Delete, m.Print, m.Get},
+		{m.ShowDependanciesFiles},
 	}
+}
+
+// GetHelp sets the keymap for the get view
+func (m *ListKeyMap) GetHelp() {
+	m.ActiveShortHelp = []key.Binding{
+		m.Apply,
+		m.Delete,
+		m.Back,
+		m.Quit,
+	}
+
+	m.ActiveFullHelp = [][]key.Binding{}
 }
 
 // YamlActionHelp sets the keymap for the yaml action view
