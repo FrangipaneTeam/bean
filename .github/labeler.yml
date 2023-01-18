@@ -1,0 +1,61 @@
+version: v1
+
+labels:
+  - label: "feature"
+    sync: true
+    matcher:
+      title: "^feat.*"
+      commits: "^feat.*"
+
+  - label: "bugfix"
+    sync: true
+    matcher:
+      title: "^fix.*"
+      commits: "^fix.*"
+
+  - label: "documentation"
+    sync: true
+    matcher:
+      title: "^docs.*"
+      commits: "^docs.*"
+
+  - label: "ci"
+    sync: true
+    matcher:
+      title: "^ci.*"
+      commits: "^ci.*"
+
+  - label: "refactor"
+    sync: true
+    matcher:
+      title: "^refactor.*"
+      commits: "^refactor.*"
+
+  - label: "chore"
+    sync: true
+    matcher:
+      title: "^chore.*"
+      commits: "^chore.*"
+
+  - label: "dependencies"
+    sync: true
+    matcher:
+      files:
+        any: [ "go.mod" ]
+
+  - label: "bug"
+    matcher:
+      body: "(\\n|.)*- \\[x\\] bug(\\n|.)*"
+
+checks:
+  - context: "Semantic Pull Request"
+    url: "https://github.com/fuxingloh/multi-labeler/blob/main/.github/labeler.yml"
+    description:
+      success: Ready for review & merge.
+      failure: Missing semantic label for merge.
+    labels:
+      any:
+        - feat
+        - fix
+        - chore
+        - docs
