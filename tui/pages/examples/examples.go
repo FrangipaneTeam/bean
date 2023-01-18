@@ -369,10 +369,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.errorRaised = true
+		m.header.NotificationOK = tui.ErrorMark
 		m.keys.ErrorHelp()
-		if msg.CmdID != "" {
-			m.currentList.SetItem(msg.Index, msg.Item)
-		}
 		return m, cmd
 
 	case tui.ListTestedDone:
@@ -490,10 +488,9 @@ func (m model) View() string {
 
 	hCenter := hP - h(header.String()) - h(footer.String())
 
-	var view string
 	if m.errorRaised {
 		errorP := lipgloss.NewStyle().
-			Height(int(float64(hCenter) * 0.5)).
+			Height(hCenter).
 			Render(m.errorPanel.View())
 
 		center.WriteString(errorP)
@@ -596,10 +593,6 @@ func (m model) View() string {
 
 	if physicalWidth > 0 {
 		tui.AppStyle = tui.AppStyle.MaxWidth(physicalWidth).MaxHeight(physicalHeight)
-	}
-
-	if m.errorRaised {
-		return view
 	}
 
 	// Okay, let's print it
