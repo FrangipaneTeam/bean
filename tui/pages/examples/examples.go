@@ -3,7 +3,9 @@ package examples
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/tools"
@@ -15,6 +17,7 @@ import (
 	"github.com/FrangipaneTeam/bean/tui/pages/md"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -26,6 +29,26 @@ const (
 	pPrintActions = "printActions"
 	pK8S          = "k8s"
 )
+
+var (
+	letters    = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	k8sCmdList map[string]*k8sCmd
+)
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+type k8sCmd struct {
+	done      bool
+	canceled  bool
+	verb      string
+	cmdOutput string
+}
 
 type model struct {
 	exampleList map[string][]list.Item
@@ -48,8 +71,17 @@ type model struct {
 
 	config config.Provider
 
-	k8sOutput string
+	k8sCurrentFiles  string
+	k8sCurrentIDView string
+	k8sProgressMsg   string
+	k8sCurrentKind   string
+	progressK8SGet   progress.Model
+	tickRunning      bool
+
+	previousItemPostion int
 }
+
+type tickK8SGet time.Time
 
 // New returns a new model of the examples page.
 // nolint: golint // model not used outside of this package
@@ -81,16 +113,21 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	list.Title = "Choose an example"
 	list.DisableQuitKeybindings()
 	list.SetShowHelp(false)
+	// list.StatusMessageLifetime = 5
+	list.SetStatusBarItemName("example", "examples")
 	// list.Help = help.Model{}`
 
 	header := header.New(
-		"Bean",
+		"Bean "+c.Version,
 		"A FrangipaneTeam bin",
 		width,
 		int(float64(height)*0.2),
 		c,
 	)
+
 	footer := footer.New(width, int(float64(width)*0.2), listKeys)
+
+	k8sCmdList = make(map[string]*k8sCmd)
 
 	return model{
 		exampleList: e.Examples,
@@ -108,6 +145,11 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 		config:     c,
 
 		showDependenciesFiles: true,
+		progressK8SGet: progress.New(
+			progress.WithSolidFill("#CBEDD5"),
+			progress.WithoutPercentage(),
+			progress.WithWidth(10),
+		),
 	}
 }
 
@@ -130,6 +172,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
 	switch msg := msg.(type) {
 
 	// Is it a key press?
@@ -145,31 +188,40 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.Back):
 			m.errorRaised = false
+			m.tickRunning = false
+			m.k8sCurrentFiles = ""
+
+			// back to the list, cancel all k8sCmd
+			for _, v := range k8sCmdList {
+				v.canceled = true
+			}
+
+			cmd = m.progressK8SGet.SetPercent(0)
+			cmds = append(cmds, cmd)
 
 			switch m.viewName {
-			// case "root":
-			// 	m.keys.RootHelp()
-			// 	return m, nil
 			case pRessources:
 				m.viewName = pRoot
 				m.keys.RootHelp()
 				cmd = m.currentList.NewStatusMessage("back to home !")
-				m.currentList.ResetSelected()
+				// m.currentList.ResetSelected()
 				cmds = append(cmds, cmd)
 				m, cmd = m.showExamples()
 			case pViewPort:
 				m.viewName = pRoot
 				m.keys.RootHelp()
 			case pPrintActions, pK8S:
+				m.keys.Get.SetEnabled(true)
 				m.viewName = pRessources
 				m.keys.YamlHelp()
 				cmd = m.currentList.NewStatusMessage("back to " + m.listName)
-				m.currentList.ResetSelected()
+				// m.currentList.ResetSelected()
 				cmds = append(cmds, cmd)
 				m, cmd = m.showYaml(m.listName)
 			}
 
 			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, m.keys.Enter):
 			if m.viewName != pRoot {
@@ -178,6 +230,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			title := m.currentList.SelectedItem().(*tui.Example).Title()
 			m, cmd = m.showYaml(title)
 			m.viewName = pRessources
+			m.previousItemPostion = m.currentList.Index()
 			m.keys.YamlHelp()
 			return m, cmd
 
@@ -221,7 +274,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply), key.Matches(msg, m.keys.Delete):
-			if m.viewName == pRessources {
+			if m.viewName == pRessources || m.viewName == pK8S {
+				if m.viewName != pK8S {
+					m.keys.Get.SetEnabled(true)
+				}
+
 				file := m.currentList.SelectedItem().(*tui.Example).Title()
 				extra := m.currentList.SelectedItem().(*tui.Example).HaveExtraFile()
 				secret := m.currentList.SelectedItem().(*tui.Example).HaveSecretFile()
@@ -239,19 +296,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					file += fmt.Sprintf(",%s", d)
 				}
 
+				cmdID := randSeq(5)
+				k8sCmdList[cmdID] = &k8sCmd{
+					done: false,
+				}
+
 				verb := "unknown"
 				switch {
 				case key.Matches(msg, m.keys.Get):
 					m.viewName = pK8S
-					m.keys.OnlyBackQuit()
-					verb = "get"
+					m.k8sCurrentIDView = cmdID
+					verb = "managed"
+					m.keys.GetHelp()
+					m.keys.Get.SetEnabled(false)
+					k8sCmdList[cmdID].verb = "get"
+					m.k8sCurrentKind = m.currentList.SelectedItem().(*tui.Example).Description()
 
 				case key.Matches(msg, m.keys.Apply):
+					m.k8sProgressMsg = "apply sent !"
 					verb = "apply"
+					k8sCmdList[cmdID].verb = "apply"
+
 				case key.Matches(msg, m.keys.Delete):
+					m.k8sProgressMsg = "delete sent !"
 					verb = "delete"
+					k8sCmdList[cmdID].verb = "delete"
 				}
-				cmd = tools.Kubectl(verb, file)
+
+				m.k8sCurrentFiles = file
+				m.header.Notification = fmt.Sprintf("k %s @ %s", verb, time.Now().Format("15:04:05"))
+				cmd = tools.Kubectl(verb, file, cmdID)
 				return m, cmd
 			}
 
@@ -294,6 +368,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.errorRaised = true
 		m.keys.ErrorHelp()
+		if msg.CmdID != "" {
+			m.currentList.SetItem(msg.Index, msg.Item)
+		}
 		return m, cmd
 
 	case tui.ListTestedDone:
@@ -301,15 +378,61 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tools.KubectlResult:
+		k8sCmd := k8sCmdList[msg.CmdID]
+
+		k8sCmd.cmdOutput = msg.Out
+
+		if k8sCmd.canceled {
+			// m.currentList.SetItem(listIndex, listMsg)
+			delete(k8sCmdList, msg.CmdID)
+			return m, nil
+		}
+		k8sCmdList[msg.CmdID].done = true
+
 		switch msg.Verb {
 		case "apply", "delete":
-			cmd := m.currentList.NewStatusMessage(fmt.Sprintf("kubectl %s ok", msg.Verb))
+			m.k8sProgressMsg = ""
+			m.header.Notification = fmt.Sprintf("k %s @ %s ✓", msg.Verb, time.Now().Format("15:04:05"))
+			// cmd := m.currentList.NewStatusMessage(fmt.Sprintf("kubectl %s ok", msg.Verb))
 			return m, cmd
 
-		case "get":
+		case "managed":
 			m.viewName = pK8S
-			m.k8sOutput = msg.Out
+			m.k8sCurrentIDView = msg.CmdID
+			m.k8sProgressMsg = ""
+			m.header.Notification = fmt.Sprintf("k %s @ %s ✓", msg.Verb, time.Now().Format("15:04:05"))
+			if !m.tickRunning {
+				m.tickRunning = true
+				cmd = m.tickCmd()
+			}
+			return m, cmd
 		}
+
+	case tickK8SGet:
+		if m.tickRunning {
+			var kCmd tea.Cmd
+			if m.progressK8SGet.Percent() == 1.0 {
+				m.progressK8SGet.SetPercent(0)
+
+				cmdID := randSeq(5)
+				kCmd = tools.Kubectl("managed", m.k8sCurrentFiles, cmdID)
+				k8sCmdList[cmdID] = &k8sCmd{
+					verb: "managed",
+				}
+				// m.k8sOutput = ""
+			}
+
+			// Note that you can also use progress.Model.SetPercent to set the
+			// percentage value explicitly, too.
+			cmd := m.progressK8SGet.IncrPercent(0.1)
+			return m, tea.Batch(m.tickCmd(), cmd, kCmd)
+		}
+
+	// FrameMsg is sent when the progress bar wants to animate itself
+	case progress.FrameMsg:
+		progressModel, cmd := m.progressK8SGet.Update(msg)
+		m.progressK8SGet = progressModel.(progress.Model)
+		return m, cmd
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -363,11 +486,29 @@ func (m model) View() string {
 			)
 
 		case pK8S:
-			get := lipgloss.NewStyle().Height(m.currentList.Height()).Render(m.k8sOutput)
+			cmd := k8sCmdList[m.k8sCurrentIDView]
+			getOutput := "loading..."
+			reloadOutput := ""
+			// w := lipgloss.Width
+
+			h := "Using ressource : " + m.k8sCurrentKind
+			h = lipgloss.NewStyle().Background(tui.RedColour).Margin(0, 0, 1, 0).Render(h)
+
+			if cmd.done {
+				reloadOutput = fmt.Sprintf("%s reloading... %s", m.progressK8SGet.View(), m.k8sProgressMsg)
+				reloadOutput = lipgloss.NewStyle().MaxWidth(m.width).Margin(1, 0, 1, 0).Render(reloadOutput)
+				getOutput = lipgloss.NewStyle().MaxWidth(m.width).Border(lipgloss.RoundedBorder()).Render(cmd.cmdOutput)
+			}
+			ui := lipgloss.JoinVertical(lipgloss.Center, h, getOutput, reloadOutput)
+			dialog := lipgloss.Place(m.width, m.currentList.Height(),
+				lipgloss.Center, lipgloss.Center,
+				lipgloss.NewStyle().Render(ui),
+			)
+
 			view = lipgloss.JoinVertical(
-				lipgloss.Left,
+				lipgloss.Center,
 				m.header.View(),
-				get,
+				dialog,
 				m.footer.View(),
 			)
 
@@ -436,6 +577,8 @@ func (m model) showExamples() (model, tea.Cmd) {
 	m.currentList.Title = "Choose an example"
 	m.listName = "-"
 
+	m.currentList.Select(m.previousItemPostion)
+
 	return m, cmd
 }
 
@@ -449,4 +592,13 @@ func (m model) showYaml(title string) (model, tea.Cmd) {
 		m.listName = title
 	}
 	return m, cmd
+}
+
+func (m model) tickCmd() tea.Cmd {
+	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
+		if !m.tickRunning {
+			return nil
+		}
+		return tickK8SGet(t)
+	})
 }

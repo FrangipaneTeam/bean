@@ -33,9 +33,10 @@ var (
 )
 
 // Execute executes the root command.
-func Execute() {
+func Execute(version string) {
 	rootCmd.PersistentFlags().StringVarP(&c.Path, "path", "p", ".", "your provider path")
 	rootCmd.AddCommand(listTestedCmd)
+	c.Version = version
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

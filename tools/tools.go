@@ -24,8 +24,11 @@ import (
 
 // KubectlResult is the result of a kubectl command
 type KubectlResult struct {
-	Verb string
-	Out  string
+	Verb  string
+	Out   string
+	CmdID string
+	Index int
+	Item  *tui.Example
 }
 
 // Markdown is a struct that holds the content of a markdown file
@@ -37,12 +40,24 @@ type Markdown struct {
 type ErrorMsg struct {
 	Reason string
 	Cause  error
+	CmdID  string
+	Index  int
+	Item   *tui.Example
 }
 
 // Kubectl runs a kubectl command
-func Kubectl(verb string, file string) tea.Cmd {
+func Kubectl(verb string, file string, cmdID string) tea.Cmd {
 	return func() tea.Msg {
-		args := []string{verb, "-f", file}
+		if verb == "" || file == "" {
+			return nil
+		}
+
+		var args []string
+		if verb == "managed" {
+			args = []string{"get", "managed"}
+		} else {
+			args = []string{verb, "-f", file}
+		}
 
 		cmd := exec.Command("kubectl", args...)
 		var stdout, stderr bytes.Buffer
@@ -53,11 +68,14 @@ func Kubectl(verb string, file string) tea.Cmd {
 			return ErrorMsg{
 				Reason: fmt.Sprintf("command kubectl %s failed", strings.Join(args, " ")),
 				Cause:  errors.New(stderr.String()),
+				CmdID:  cmdID,
 			}
 		}
+
 		return KubectlResult{
-			Out:  stdout.String(),
-			Verb: verb,
+			Out:   stdout.String(),
+			Verb:  verb,
+			CmdID: cmdID,
 		}
 	}
 }

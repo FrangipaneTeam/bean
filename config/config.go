@@ -3,5 +3,6 @@ package config
 
 // Provider is the configuration provider
 type Provider struct {
-	Path string
+	Path    string
+	Version string
 }
