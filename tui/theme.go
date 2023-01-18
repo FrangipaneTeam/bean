@@ -7,7 +7,7 @@ import (
 var (
 	PrimaryColour        = lipgloss.Color("#3a1577")
 	SecondaryColour      = lipgloss.Color("#5b1689")
-	BorderColour         = lipgloss.Color("#CBEDD5")
+	BorderColour         = lipgloss.Color("#807d8a")
 	FeintColour          = lipgloss.Color("#807d8a")
 	VeryFeintColour      = lipgloss.Color("#5e5e5e")
 	TextColour           = lipgloss.Color("#f6f5fc")
@@ -16,19 +16,38 @@ var (
 	AmberColour          = lipgloss.Color("#e68a35")
 	GreenColour          = lipgloss.Color("#26a621")
 	RedColour            = lipgloss.Color("#FD8A8A")
-	SpinnerColour        = lipgloss.Color("#439A97")
+	SpinnerColour        = lipgloss.Color("#FF5F87")
+	DividerColour        = lipgloss.Color("#FF5F87")
+	NotificationColour   = lipgloss.Color("#FF5F87")
+	special              = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
 
-	AppStyle            = lipgloss.NewStyle().Margin(2)
+	AppStyle            = lipgloss.NewStyle().Padding(2, 2)
 	TextStyle           = lipgloss.NewStyle().Foreground(TextColour)
 	FeintTextStyle      = lipgloss.NewStyle().Foreground(FeintColour)
 	VeryFeintTextStyle  = lipgloss.NewStyle().Foreground(VeryFeintColour)
 	HightlightTextStyle = lipgloss.NewStyle().Foreground(HighlightColour)
+
+	Divider = lipgloss.NewStyle().
+		SetString("•").
+		Padding(0, 1).
+		Foreground(DividerColour).
+		String()
 
 	Ellipsis      = HightlightTextStyle.Copy()
 	HelpText      = TextStyle.Copy()
 	HelpFeintText = FeintTextStyle.Copy()
 
 	// Error
+
+	CheckMark = lipgloss.NewStyle().SetString("✓").
+			Foreground(special).
+			PaddingRight(1).
+			String()
+
+	RunningMark = lipgloss.NewStyle().SetString("?").
+			Foreground(AmberColour).
+			PaddingRight(1).
+			String()
 
 	Label = lipgloss.NewStyle().
 		Background(RedColour).
@@ -53,9 +72,5 @@ var (
 	// Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
 	// Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
 	NotificationStyle = lipgloss.NewStyle().
-		// Inherit(StatusBarStyle).
-		Foreground(lipgloss.Color(RedColour))
-	// Background(lipgloss.Color("#FF5F87"))
-	// Padding(0, 1).
-	// MarginRight(1)
+				Foreground(lipgloss.Color(NotificationColour))
 )

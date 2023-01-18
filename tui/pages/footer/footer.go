@@ -3,6 +3,7 @@ package footer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/charmbracelet/bubbles/help"
@@ -10,13 +11,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	subtle = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
+)
+
 // Model is the model of the footer
 type Model struct {
 	tea.Model
-	Message       string
-	Width, Height int
-	Help          help.Model
-	Keymap        *tui.ListKeyMap
+	Message string
+	Width   int
+	Help    help.Model
+	Keymap  *tui.ListKeyMap
 }
 
 // Init initializes the model
@@ -25,7 +30,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 // New creates a new footer model
-func New(w, h int, km *tui.ListKeyMap) Model {
+func New(w int, km *tui.ListKeyMap) Model {
 	help := help.New()
 	help.Styles.ShortSeparator = tui.Ellipsis
 	help.Styles.ShortKey = tui.HelpText
@@ -36,7 +41,6 @@ func New(w, h int, km *tui.ListKeyMap) Model {
 	return Model{
 		Message: "FrangipaneTeam",
 		Width:   w,
-		Height:  h,
 		Help:    help,
 		Keymap:  km,
 	}
@@ -49,21 +53,40 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 // View renders the model
 func (m Model) View() string {
+	footer := strings.Builder{}
 	// panel := tui.BorderTop.Width(m.Width).Render(text)
-	message := fmt.Sprintf("• %s •", m.Message)
+	message := fmt.Sprintf(
+		"%s %s %s",
+		tui.Divider, strings.Trim(m.Message, "\n"), tui.Divider,
+	)
+
+	wP := m.Width - tui.AppStyle.GetHorizontalPadding()
+	f := lipgloss.NewStyle().Height(3).Width(wP)
+
+	ui := lipgloss.Place(
+		wP,
+		3,
+		lipgloss.Center,
+		lipgloss.Center,
+		lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), true, false, false, false).
+			BorderForeground(tui.BorderColour).
+			Foreground(subtle).
+			Render(message),
+	)
+
 	banner := lipgloss.JoinVertical(
 		lipgloss.Center,
 		m.Help.View(m.Keymap),
-		tui.BorderTop.Width(m.Width).Render(""),
-		tui.HightlightTextStyle.Render(message),
+		ui,
 	)
-	return banner
+	footer.WriteString(f.Render(banner))
+	return footer.String()
 }
 
 // Resize resizes the model
 func (m Model) Resize(width, height int) Model {
 	m.Width = width
-	m.Height = height
 	m.Help.Width = width
 
 	return m

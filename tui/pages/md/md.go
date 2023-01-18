@@ -25,8 +25,8 @@ func New(w, h int) Model {
 	vp := viewport.New(w, h)
 	vp.Style = lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(tui.BorderColour).
-		PaddingRight(2)
+		BorderForeground(tui.BorderColour)
+	// PaddingRight(2)
 	return Model{
 		Width:    w,
 		Height:   h,

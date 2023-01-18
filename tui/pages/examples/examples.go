@@ -4,6 +4,7 @@ package examples
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/term"
 )
 
 const (
@@ -86,6 +88,10 @@ type tickK8SGet time.Time
 // New returns a new model of the examples page.
 // nolint: golint // model not used outside of this package
 func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
+	physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
+	wP := physicalWidth - tui.AppStyle.GetHorizontalPadding()
+	hP := physicalHeight - tui.AppStyle.GetVerticalPadding()
+
 	listKeys := tui.NewListKeyMap()
 	delegate := list.NewDefaultDelegate()
 
@@ -121,11 +127,10 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 		"Bean "+c.Version,
 		"A FrangipaneTeam bin",
 		width,
-		int(float64(height)*0.2),
 		c,
 	)
 
-	footer := footer.New(width, int(float64(width)*0.2), listKeys)
+	footer := footer.New(width, listKeys)
 
 	k8sCmdList = make(map[string]*k8sCmd)
 
@@ -139,7 +144,7 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 		header:     header,
 		footer:     footer,
 		errorPanel: errorpanel.New(width, int(float64(height)*0.6)),
-		markdown:   md.New(width, int(float64(height)*0.6)),
+		markdown:   md.New(wP, hP-20),
 		width:      width,
 		height:     height,
 		config:     c,
@@ -325,29 +330,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				m.k8sCurrentFiles = file
 				m.header.Notification = fmt.Sprintf("k %s @ %s", verb, time.Now().Format("15:04:05"))
+				m.header.NotificationOK = tui.RunningMark
 				cmd = tools.Kubectl(verb, file, cmdID)
 				return m, cmd
 			}
 
 		}
 	case tea.WindowSizeMsg:
-		top, right, bottom, left := tui.AppStyle.GetMargin()
+		top, right, bottom, left := tui.AppStyle.GetPadding()
 		m.width, m.height = msg.Width-left-right, msg.Height-top-bottom
+		centerH := m.height - lipgloss.Height(m.header.View()) - lipgloss.Height(m.footer.View())
 
-		m.header.Width = m.width
-		m.header.Height = int(float64(m.height) * 0.2)
-		m.footer.Width = m.width
-		m.footer.Height = int(float64(m.height) * 0.2)
+		m.header.Width = msg.Width
+		m.footer.Width = msg.Width
 
 		m.markdown.Width = m.width
-		m.markdown.Viewport.Width = m.width
-		m.markdown.Viewport.Height = int(float64(m.height) * 0.6)
-		// m.footer.Help.Height = int(float64(m.height) * 0.15)
+		m.markdown.Viewport.Width = m.width - right - left
+		m.markdown.Viewport.Height = centerH
 
-		m.currentList.SetSize(m.width, int(float64(m.height)*0.6))
-		m.errorPanel.Resize(m.width, int(float64(m.height)*0.6))
-		// m.footer.Resize(m.width, int(float64(m.height)*0.15))
-		// m.header.Resize(m.width, int(float64(m.height)*0.15))
+		m.currentList.SetSize(m.width, centerH)
+		m.errorPanel.Resize(m.width, centerH)
 
 	case tui.LoadedExamples:
 		m.exampleList = msg.Examples
@@ -392,7 +394,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Verb {
 		case "apply", "delete":
 			m.k8sProgressMsg = ""
-			m.header.Notification = fmt.Sprintf("k %s @ %s ✓", msg.Verb, time.Now().Format("15:04:05"))
+			m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
+			m.header.NotificationOK = tui.CheckMark
 			// cmd := m.currentList.NewStatusMessage(fmt.Sprintf("kubectl %s ok", msg.Verb))
 			return m, cmd
 
@@ -400,7 +403,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewName = pK8S
 			m.k8sCurrentIDView = msg.CmdID
 			m.k8sProgressMsg = ""
-			m.header.Notification = fmt.Sprintf("k %s @ %s ✓", msg.Verb, time.Now().Format("15:04:05"))
+			m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
+			m.header.NotificationOK = tui.CheckMark
 			if !m.tickRunning {
 				m.tickRunning = true
 				cmd = m.tickCmd()
@@ -464,61 +468,80 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View returns the string representation of the model.
 func (m model) View() string {
+	physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
+	doc := strings.Builder{}
+	h := lipgloss.Height
+	header := strings.Builder{}
+	footer := strings.Builder{}
+	center := strings.Builder{}
+
+	// header
+	{
+		header.WriteString(m.header.View())
+	}
+
+	// footer
+	{
+		footer.WriteString(m.footer.View())
+	}
+
+	wP := physicalWidth - tui.AppStyle.GetHorizontalPadding()
+	hP := physicalHeight - tui.AppStyle.GetVerticalPadding()
+
+	hCenter := hP - h(header.String()) - h(footer.String())
+
 	var view string
 	if m.errorRaised {
-		errorP := lipgloss.NewStyle().Height(m.currentList.Height()).Render(m.errorPanel.View())
-		view = lipgloss.JoinVertical(
-			lipgloss.Center,
-			m.header.View(),
-			errorP,
-			m.footer.View(),
-		)
+		errorP := lipgloss.NewStyle().
+			Height(int(float64(hCenter) * 0.5)).
+			Render(m.errorPanel.View())
 
-		// return errorP
+		center.WriteString(errorP)
 	} else {
 		switch m.viewName {
 		case pViewPort:
-			view = lipgloss.JoinVertical(
+			ui := lipgloss.Place(
+				wP,
+				hCenter,
 				lipgloss.Center,
-				m.header.View(),
-				m.markdown.Viewport.View(),
-				m.footer.View(),
+				lipgloss.Center,
+				lipgloss.NewStyle().Padding(1, 0, 1, 0).Render(m.markdown.Viewport.View()),
 			)
+
+			center.WriteString(lipgloss.NewStyle().Render(ui))
 
 		case pK8S:
 			cmd := k8sCmdList[m.k8sCurrentIDView]
 			getOutput := "loading..."
 			reloadOutput := ""
-			// w := lipgloss.Width
 
 			h := "Using ressource : " + m.k8sCurrentKind
 			h = lipgloss.NewStyle().Background(tui.RedColour).Margin(0, 0, 1, 0).Render(h)
 
 			if cmd.done {
 				reloadOutput = fmt.Sprintf("%s reloading... %s", m.progressK8SGet.View(), m.k8sProgressMsg)
-				reloadOutput = lipgloss.NewStyle().MaxWidth(m.width).Margin(1, 0, 1, 0).Render(reloadOutput)
-				getOutput = lipgloss.NewStyle().MaxWidth(m.width).Border(lipgloss.RoundedBorder()).Render(cmd.cmdOutput)
+				reloadOutput = lipgloss.NewStyle().MaxWidth(wP).Margin(1, 0, 1, 0).Render(reloadOutput)
+				cmd := lipgloss.NewStyle().Padding(2).Render(cmd.cmdOutput)
+				getOutput = lipgloss.NewStyle().MaxWidth(wP).Border(lipgloss.RoundedBorder()).Render(cmd)
 			}
 			ui := lipgloss.JoinVertical(lipgloss.Center, h, getOutput, reloadOutput)
-			dialog := lipgloss.Place(m.width, m.currentList.Height(),
+			dialog := lipgloss.Place(wP, hCenter,
 				lipgloss.Center, lipgloss.Center,
 				lipgloss.NewStyle().Render(ui),
 			)
 
-			view = lipgloss.JoinVertical(
-				lipgloss.Center,
-				m.header.View(),
-				dialog,
-				m.footer.View(),
-			)
+			center.WriteString(dialog)
 
 		case pRoot, pRessources:
-			view = lipgloss.JoinVertical(
+			ui := lipgloss.Place(
+				wP,
+				hCenter,
 				lipgloss.Left,
-				m.header.View(),
-				m.currentList.View(),
-				m.footer.View(),
+				lipgloss.Top,
+				lipgloss.NewStyle().Padding(1, 0, 0, 0).Render(m.currentList.View()),
 			)
+
+			center.WriteString(lipgloss.NewStyle().Render(ui))
 
 		case pPrintActions:
 			yamlFile := m.currentList.SelectedItem().(*tui.Example).Title()
@@ -558,17 +581,30 @@ func (m model) View() string {
 				str...,
 			)
 
-			actions = lipgloss.NewStyle().Copy().Align(lipgloss.Center, lipgloss.Center).Foreground(tui.HighlightColour).Height(m.currentList.Height()).Width(m.width).Render(actions)
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Center,
-				m.header.View(),
-				actions,
-				m.footer.View(),
-			)
+			actions = lipgloss.NewStyle().Copy().Align(lipgloss.Center, lipgloss.Center).Foreground(tui.HighlightColour).Height(hCenter).Width(wP).Render(actions)
+			center.WriteString(lipgloss.NewStyle().Render(actions))
 		}
 	}
-	return tui.AppStyle.Render(view)
+
+	// Render the document
+	doc.WriteString(lipgloss.JoinVertical(
+		lipgloss.Center,
+		header.String(),
+		center.String(),
+		footer.String(),
+	))
+
+	if physicalWidth > 0 {
+		tui.AppStyle = tui.AppStyle.MaxWidth(physicalWidth).MaxHeight(physicalHeight)
+	}
+
+	if m.errorRaised {
+		return view
+	}
+
+	// Okay, let's print it
+	return tui.AppStyle.Render(doc.String())
+	// return lipgloss.NewStyle().Render(doc.String())
 }
 
 func (m model) showExamples() (model, tea.Cmd) {
