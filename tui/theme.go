@@ -49,6 +49,11 @@ var (
 			PaddingRight(1).
 			String()
 
+	ErrorMark = lipgloss.NewStyle().SetString("x").
+			Foreground(AmberColour).
+			PaddingRight(1).
+			String()
+
 	Label = lipgloss.NewStyle().
 		Background(RedColour).
 		Foreground(TextColour).
