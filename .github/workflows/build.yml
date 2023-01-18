@@ -1,0 +1,14 @@
+---
+name: try golang build
+
+on:
+  push:
+    branches:
+      - dependabot/**
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v2
+      - run: go build .
