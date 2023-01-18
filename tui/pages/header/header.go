@@ -26,8 +26,9 @@ type Model struct {
 	activityFrom           interface{}
 	notifyCrds             chan pages.NotifyActivity
 	notifyExamples         chan pages.NotifyActivity
-	Width, Height          int
+	Width                  int
 	Notification           string
+	NotificationOK         string
 	// errorPanel             errorpanel.Model
 	// errorRaised            bool
 	config config.Provider
@@ -46,7 +47,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 // New creates a new header model
-func New(title string, desc string, w int, h int, c config.Provider) Model {
+func New(title string, desc string, w int, c config.Provider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Points
 	s.Style = lipgloss.NewStyle().Foreground(tui.SpinnerColour)
@@ -54,13 +55,13 @@ func New(title string, desc string, w int, h int, c config.Provider) Model {
 	return Model{
 		Title:          title,
 		Description:    desc,
+		Notification:   "ready",
+		NotificationOK: tui.RunningMark,
 		spinner:        s,
 		notifyCrds:     make(chan pages.NotifyActivity),
 		notifyExamples: make(chan pages.NotifyActivity),
 		Width:          w,
-		Height:         h,
-		// errorPanel:     errorpanel.New(w, h),
-		config: c,
+		config:         c,
 	}
 }
 
@@ -145,16 +146,15 @@ func (m Model) View() string {
 
 	notification := strings.Builder{}
 
-	if m.Notification != "" {
-		t := strings.Trim(m.Notification, "\n")
-		fmt.Fprintf(&notification, "• %s", t)
-	}
+	t := strings.Trim(m.Notification, "\n")
+	fmt.Fprintf(&notification, "%s %s %s", tui.Divider, t, m.NotificationOK)
+	wP := m.Width - tui.AppStyle.GetHorizontalPadding()
 
 	header = lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		lipgloss.NewStyle().Width(m.Width/2).Align(lipgloss.Left).Render(header),
+		lipgloss.NewStyle().Width(wP/2).Align(lipgloss.Left).Render(header),
 		tui.NotificationStyle.
-			Width(m.Width/2).
+			Width(wP/2).
 			Align(lipgloss.Right).
 			Render(notification.String()),
 	)
@@ -163,14 +163,15 @@ func (m Model) View() string {
 		lipgloss.Center,
 		lipgloss.NewStyle().
 			MarginBottom(1).
-			Width(m.Width-4).
+			Width(wP).
 			Align(lipgloss.Center).
 			Render(nameVersion),
 		header,
+		// tui.BorderBottom.Width(wP).String(),
 	)
-	border := tui.BorderBottom.Width(m.Width).Render(banner)
+	banner += "\n" + tui.BorderBottom.Width(wP).String()
 
-	return border
+	return banner
 }
 
 type tickMsg time.Time
