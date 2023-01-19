@@ -99,8 +99,13 @@ func (e *Example) FindForProvider(pattern string) map[string]bool {
 				}
 			case "Refs":
 				for _, v2 := range v.([]interface{}) {
-					if v2.(map[string]interface{})["name"] != nil {
-						maps[v2.(map[string]interface{})["name"].(string)] = true
+					m, ok := v2.(map[string]interface{})
+					if !ok {
+						continue
+					}
+
+					if name, ok := m["name"].(string); ok {
+						maps[name] = true
 					}
 				}
 			}
