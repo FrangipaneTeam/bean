@@ -1,12 +1,16 @@
 package tui
 
 import (
-	"fmt"
+	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	"golang.org/x/exp/maps"
+)
+
+var (
+	reRefs, _     = regexp.Compile(`^\w+Refs$`)
+	reSelector, _ = regexp.Compile(`^\w+Selector$`)
 )
 
 // Example is a struct that holds the details of an example
@@ -35,7 +39,7 @@ type Example struct {
 		Name string `yaml:"name"`
 	} `yaml:"metadata"`
 	Spec struct {
-		ForProvider map[interface{}]interface{} `yaml:"forProvider"`
+		ForProvider map[string]interface{} `yaml:"forProvider"`
 	} `yaml:"spec"`
 }
 
@@ -82,37 +86,83 @@ func (e Example) DependenciesFilesList() []string {
 	return list
 }
 
-// FindForProvider returns a map of all the fields containing the pattern
-func (e *Example) FindForProvider(pattern string) map[string]bool {
-	// FindForProvider Recursively search all fields containing $parameter in the ForProvider.Spec
-
-	maps := make(map[string]bool)
+// FindSelectorsAndRefs returns the selectors and refs of the example
+func (e *Example) FindSelectorsAndRefs() (map[string]bool, map[string]bool) {
+	mapsSelector := make(map[string]bool)
+	mapsRefs := make(map[string]bool)
 
 	for k, v := range e.Spec.ForProvider {
-		// TODO use regex to find the pattern
-		if strings.Contains(fmt.Sprintf("%v", k), pattern) {
-
-			switch pattern {
-			case "Selector":
-				if v.(map[string]interface{})["matchLabels"].(map[string]interface{})["testing.upbound.io/example-name"] != nil {
-					maps[v.(map[string]interface{})["matchLabels"].(map[string]interface{})["testing.upbound.io/example-name"].(string)] = true
+		if reSelector.MatchString(k) {
+			if _, ok := v.(map[string]interface{}); ok {
+				m := getSelector(v.(map[string]interface{}))
+				maps.Copy(mapsSelector, m)
+			}
+		} else if reRefs.MatchString(k) {
+			for _, v2 := range v.([]interface{}) {
+				m, ok := v2.(map[string]interface{})
+				if !ok {
+					continue
 				}
-			case "Refs":
-				for _, v2 := range v.([]interface{}) {
-					m, ok := v2.(map[string]interface{})
-					if !ok {
-						continue
-					}
 
-					if name, ok := m["name"].(string); ok {
-						maps[name] = true
+				if name, ok := m["name"].(string); ok {
+					mapsRefs[name] = true
+				}
+			}
+		} else {
+			if _, ok := v.([]interface{}); ok {
+				isArrayInterface(v.([]interface{}), mapsSelector, mapsRefs)
+			}
+		}
+	}
+
+	return mapsSelector, mapsRefs
+}
+
+func isArrayInterface(i []interface{}, mapsSelector map[string]bool, mapsRefs map[string]bool) {
+	for _, a := range i {
+		if _, ok := a.(map[string]interface{}); ok {
+			for k, v := range a.(map[string]interface{}) {
+				if reSelector.MatchString(k) {
+					if _, ok := v.(map[string]interface{}); ok {
+						m := getSelector(v.(map[string]interface{}))
+						maps.Copy(mapsSelector, m)
+					}
+				} else if reRefs.MatchString(k) {
+					for _, v2 := range v.([]interface{}) {
+						m, ok := v2.(map[string]interface{})
+						if !ok {
+							continue
+						}
+
+						if name, ok := m["name"].(string); ok {
+							mapsRefs[name] = true
+						}
+					}
+				} else {
+					if _, ok := v.([]interface{}); ok {
+						isArrayInterface(v.([]interface{}), mapsSelector, mapsRefs)
 					}
 				}
 			}
-
 		}
 	}
-	return maps
+}
+
+func getSelector(v map[string]interface{}) map[string]bool {
+	m := make(map[string]bool)
+	if _, ok := v["matchLabels"].(map[string]interface{}); !ok {
+		return nil
+	}
+	matchLabels := v["matchLabels"].(map[string]interface{})
+	exampleName := matchLabels["testing.upbound.io/example-name"]
+	if exampleName != nil {
+		if _, ok := exampleName.(string); ok {
+			m[exampleName.(string)] = true
+		} else {
+			return nil
+		}
+	}
+	return m
 }
 
 // FindDependencies Find Selector and Ref in all files examples

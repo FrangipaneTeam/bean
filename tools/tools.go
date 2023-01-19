@@ -183,8 +183,7 @@ func GenerateExamplesList(c config.Provider) tea.Msg {
 				k.ExampleID = strings.ToLower(fmt.Sprintf("%s.%s", k.Kind, k.APIVersion))
 
 				// check for selector
-				k.Selectors = k.FindForProvider("Selector")
-				k.Refs = k.FindForProvider("Refs")
+				k.Selectors, k.Refs = k.FindSelectorsAndRefs()
 				k.DependenciesFiles = map[string]bool{}
 
 				// check for extra file examples
