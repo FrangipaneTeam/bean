@@ -5,9 +5,9 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    target-branch: "devel"
+    target-branch: "main"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "daily"
-    target-branch: "devel"
+    target-branch: "main"
