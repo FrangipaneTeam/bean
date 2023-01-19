@@ -287,18 +287,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				file := m.currentList.SelectedItem().(*tui.Example).Title()
 				extra := m.currentList.SelectedItem().(*tui.Example).HaveExtraFile()
 				secret := m.currentList.SelectedItem().(*tui.Example).HaveSecretFile()
+				files := []string{file}
 
 				if extra {
-					file += fmt.Sprintf(",%s.extra", file)
+					f := fmt.Sprintf("%s.extra", file)
+					files = append(files, f)
 				}
 
 				if secret {
-					file += fmt.Sprintf(",%s.secret", file)
+					f := fmt.Sprintf("%s.secret", file)
+					files = append(files, f)
 				}
 
 				if m.showDependenciesFiles && m.currentList.SelectedItem().(*tui.Example).HaveDependenciesFiles() {
-					d := strings.Join(m.currentList.SelectedItem().(*tui.Example).DependenciesFilesList(), ",")
-					file += fmt.Sprintf(",%s", d)
+					d := m.currentList.SelectedItem().(*tui.Example).DependenciesFilesList()
+					files = append(files, d...)
 				}
 
 				cmdID := randSeq(5)
@@ -328,10 +331,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					k8sCmdList[cmdID].verb = "delete"
 				}
 
-				m.k8sCurrentFiles = file
+				filesJ := strings.Join(files, ",")
+				m.k8sCurrentFiles = filesJ
 				m.header.Notification = fmt.Sprintf("k %s @ %s", verb, time.Now().Format("15:04:05"))
 				m.header.NotificationOK = tui.RunningMark
-				cmd = tools.Kubectl(verb, file, cmdID)
+				cmd = tools.Kubectl(verb, filesJ, cmdID)
 				return m, cmd
 			}
 
@@ -541,10 +545,13 @@ func (m model) View() string {
 			center.WriteString(lipgloss.NewStyle().Render(ui))
 
 		case pPrintActions:
-			yamlFile := m.currentList.SelectedItem().(*tui.Example).Title()
+			selectedFile := m.currentList.SelectedItem().(*tui.Example).Title()
+			yamlFile := ""
 
 			if m.currentList.SelectedItem().(*tui.Example).HaveSecretFile() {
-				yamlFile = fmt.Sprintf("%s,%s.secret", yamlFile, yamlFile)
+				yamlFile = fmt.Sprintf("%s,%s.secret", selectedFile, selectedFile)
+			} else {
+				yamlFile = selectedFile
 			}
 
 			str := []string{
@@ -554,7 +561,7 @@ func (m model) View() string {
 			}
 
 			if m.currentList.SelectedItem().(*tui.Example).HaveExtraFile() {
-				extraFile := yamlFile + ".extra"
+				extraFile := selectedFile + ".extra"
 				str = append(str,
 					lipgloss.NewStyle().Padding(2, 0, 2, 0).Underline(true).Render("Extra file:"),
 					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl apply -f "+extraFile),
