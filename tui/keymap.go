@@ -113,6 +113,7 @@ func (m ListKeyMap) FullHelp() [][]key.Binding {
 // RootHelp sets the keymap for the root view
 func (m *ListKeyMap) RootHelp() {
 	kb := []key.Binding{
+		m.Get,
 		m.Help,
 		m.Quit,
 	}
@@ -124,6 +125,7 @@ func (m *ListKeyMap) RootHelp() {
 		{m.ForwardSlash, m.Enter},
 		{m.Help, m.Quit},
 		{m.ShowRessources, m.ShowTested, m.GenerateListTested},
+		{m.Get},
 	}
 }
 
