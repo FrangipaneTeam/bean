@@ -116,7 +116,7 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	list := list.New(e.Examples["-"],
 		delegate,
 		width,
-		int(float64(height)*0.6),
+		height,
 	)
 	list.Title = "Choose an example"
 	list.DisableQuitKeybindings()
@@ -133,6 +133,10 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	)
 
 	footer := footer.New(width, listKeys)
+
+	// we have header and footer, we need to reduce list height
+	list.SetWidth(width - tui.AppStyle.GetHorizontalPadding())
+	list.SetHeight(height - header.Height() - footer.Height() - tui.AppStyle.GetVerticalPadding())
 
 	k8sCmdList = make(map[string]*k8sCmd)
 
@@ -244,6 +248,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			title := m.currentList.SelectedItem().(*tui.Example).Title()
+			if m.currentList.FilterState() == list.FilterApplied {
+				m.currentList.ResetFilter()
+			}
 
 			m.keys.Apply.SetEnabled(true)
 			m.keys.Delete.SetEnabled(true)
@@ -366,12 +373,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
+		m.header.Notification = "resizing"
 		top, right, bottom, left := tui.AppStyle.GetPadding()
 		m.width, m.height = msg.Width-left-right, msg.Height-top-bottom
-		centerH := m.height - lipgloss.Height(m.header.View()) - lipgloss.Height(m.footer.View())
+		centerH := m.height - m.header.Height() - m.footer.Height()
 
-		m.header.Width = msg.Width
-		m.footer.Width = msg.Width
+		m.header.SetWidth(msg.Width)
+		m.footer.SetWidth(msg.Width)
 
 		m.markdown.Width = m.width
 		m.markdown.Viewport.Width = m.width - right - left
@@ -379,6 +387,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.currentList.SetSize(m.width, centerH)
 		m.errorPanel.Resize(m.width, centerH)
+		m.header.NotificationOK = tui.CheckMark
 
 	case tui.LoadedExamples:
 		m.exampleList = msg.Examples
@@ -674,6 +683,11 @@ func (m model) rootView() (model, tea.Cmd) {
 	m.keys.Print.SetEnabled(false)
 
 	m.currentList.NewStatusMessage("back to home !")
+
+	if m.currentList.FilterState() == list.FilterApplied {
+		m.currentList.ResetFilter()
+	}
+
 	m, cmd := m.showExamples()
 
 	return m, cmd
