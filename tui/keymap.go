@@ -4,19 +4,20 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 )
 
 // ListKeyMap is the keymap for the application
 type ListKeyMap struct {
 	help.KeyMap
+	ListKeyMap            list.KeyMap
 	VpKM                  viewport.KeyMap
 	Back                  key.Binding
-	Enter                 key.Binding
+	Select                key.Binding
 	Quit                  key.Binding
 	UpDown                key.Binding
 	LeftRight             key.Binding
-	ForwardSlash          key.Binding
 	Apply                 key.Binding
 	Delete                key.Binding
 	Print                 key.Binding
@@ -69,13 +70,9 @@ func NewListKeyMap() *ListKeyMap {
 			key.WithKeys("?"),
 			key.WithHelp("?", "help"),
 		),
-		Enter: key.NewBinding(
+		Select: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("↲", "select"),
-		),
-		ForwardSlash: key.NewBinding(
-			key.WithKeys("/"),
-			key.WithHelp("/", "filter"),
 		),
 		ShowRessources: key.NewBinding(
 			key.WithKeys("r"),
@@ -93,114 +90,126 @@ func NewListKeyMap() *ListKeyMap {
 			key.WithKeys("T"),
 			key.WithHelp("T", "generate list tested"),
 		),
-		VpKM: viewport.DefaultKeyMap(),
+		VpKM:       viewport.DefaultKeyMap(),
+		ListKeyMap: list.DefaultKeyMap(),
 	}
 }
 
 // ShortHelp returns the short help
 func (m ListKeyMap) ShortHelp() []key.Binding {
-	kb := make([]key.Binding, 0)
-	kb = append(kb, m.ActiveShortHelp...)
-
-	return kb
-}
-
-// FullHelp returns the full help
-func (m ListKeyMap) FullHelp() [][]key.Binding {
-	return m.ActiveFullHelp
-}
-
-// RootHelp sets the keymap for the root view
-func (m *ListKeyMap) RootHelp() {
-	kb := []key.Binding{
-		m.Get,
-		m.Help,
-		m.Quit,
-	}
-
-	m.ActiveShortHelp = kb
-
-	m.ActiveFullHelp = [][]key.Binding{
-		{m.UpDown, m.LeftRight, m.Back},
-		{m.ForwardSlash, m.Enter},
-		{m.Help, m.Quit},
-		{m.ShowRessources, m.ShowTested, m.GenerateListTested},
-		{m.Get},
-	}
-}
-
-// YamlHelp sets the keymap for the yaml view
-func (m *ListKeyMap) YamlHelp() {
-	kb := []key.Binding{
-		m.Apply,
-		m.Delete,
-		m.Get,
-		m.Print,
-		m.ShowDependanciesFiles,
-		m.Help,
-		m.Quit,
-	}
-
-	m.ActiveShortHelp = kb
-
-	m.ActiveFullHelp = [][]key.Binding{
-		{m.UpDown, m.LeftRight, m.Back},
-		{m.ForwardSlash, m.Enter},
-		{m.Help, m.Quit},
-		{m.Apply, m.Delete, m.Print},
-		{m.Get, m.ShowDependanciesFiles},
-	}
-}
-
-// GetHelp sets the keymap for the get view
-func (m *ListKeyMap) GetHelp() {
-	m.ActiveShortHelp = []key.Binding{
-		m.Apply,
-		m.Delete,
-		m.Back,
-		m.Quit,
-	}
-
-	m.ActiveFullHelp = [][]key.Binding{}
-}
-
-// YamlActionHelp sets the keymap for the yaml action view
-func (m *ListKeyMap) YamlActionHelp() {
-
-	m.ActiveShortHelp = []key.Binding{
-		m.Back,
-		m.Quit,
-	}
-
-	m.ActiveFullHelp = [][]key.Binding{}
-}
-
-// ViewPortHelp sets the keymap for the viewport view
-func (m *ListKeyMap) ViewPortHelp() {
-	m.ActiveShortHelp = []key.Binding{
+	return []key.Binding{
 		m.VpKM.Up,
 		m.VpKM.Down,
 		m.VpKM.PageUp,
 		m.VpKM.PageDown,
+		m.Select,
+		// m.ListKeyMap.Filter,
+		m.Apply,
+		m.Delete,
+		m.Get,
+		m.Print,
+		// m.ShowDependanciesFiles,
+		m.Help,
 		m.Back,
 		m.Quit,
 	}
 }
 
-// ErrorHelp sets the keymap for the error view
-func (m *ListKeyMap) ErrorHelp() {
-	m.ActiveShortHelp = []key.Binding{
-		m.Back,
-		m.Quit,
+// FullHelp returns the full help
+func (m ListKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{m.VpKM.Up, m.VpKM.Down, m.VpKM.PageUp, m.VpKM.PageDown},
+		{m.UpDown, m.LeftRight, m.Back},
+		{m.ListKeyMap.Filter, m.Select},
+		{m.Help, m.Quit},
+		{m.Apply, m.Delete, m.Print},
+		{m.Get, m.ShowDependanciesFiles},
+		{m.ShowRessources, m.ShowTested, m.GenerateListTested},
 	}
 }
 
-// OnlyBackQuit sets the keymap for the simple view
-func (m *ListKeyMap) OnlyBackQuit() {
-	m.ActiveShortHelp = []key.Binding{
-		m.Back,
-		m.Quit,
-	}
+// EnableViewPortKeys is the set of keys for the viewport
+func (m *ListKeyMap) EnableViewPortKeys() {
+	m.disableK8SKeys()
+	m.Back.SetEnabled(true)
+	m.Select.SetEnabled(false)
 
-	m.ActiveFullHelp = [][]key.Binding{}
+	m.VpKM.Up.SetEnabled(true)
+	m.VpKM.Down.SetEnabled(true)
+	m.VpKM.PageUp.SetEnabled(true)
+	m.VpKM.PageDown.SetEnabled(true)
+	m.VpKM.HalfPageUp.SetEnabled(true)
+	m.VpKM.HalfPageDown.SetEnabled(true)
+	m.UpDown.SetEnabled(false)
+	m.LeftRight.SetEnabled(false)
+	m.Back.SetEnabled(true)
+	m.ListKeyMap.Filter.SetEnabled(false)
+}
+
+func (m *ListKeyMap) disableViewPortKeys() {
+	m.VpKM.Up.SetEnabled(false)
+	m.VpKM.Down.SetEnabled(false)
+	m.VpKM.PageUp.SetEnabled(false)
+	m.VpKM.PageDown.SetEnabled(false)
+	m.VpKM.HalfPageUp.SetEnabled(false)
+	m.VpKM.HalfPageDown.SetEnabled(false)
+	m.UpDown.SetEnabled(true)
+	m.LeftRight.SetEnabled(true)
+}
+
+func (m *ListKeyMap) enableK8SKeys() {
+	m.Apply.SetEnabled(true)
+	m.Delete.SetEnabled(true)
+	m.Print.SetEnabled(true)
+	m.Get.SetEnabled(true)
+	m.ShowDependanciesFiles.SetEnabled(true)
+	m.ShowRessources.SetEnabled(false)
+	m.ShowTested.SetEnabled(false)
+	m.GenerateListTested.SetEnabled(false)
+}
+
+func (m *ListKeyMap) disableK8SKeys() {
+	m.Apply.SetEnabled(false)
+	m.Delete.SetEnabled(false)
+	m.Print.SetEnabled(false)
+	m.Get.SetEnabled(false)
+	m.ShowDependanciesFiles.SetEnabled(false)
+}
+
+// EnableRootKeys is the set of keys for the root
+func (m *ListKeyMap) EnableRootKeys() {
+	m.disableK8SKeys()
+	m.disableViewPortKeys()
+	m.Back.SetEnabled(false)
+	m.Select.SetEnabled(true)
+	m.Get.SetEnabled(true)
+	m.Help.SetEnabled(true)
+	m.ListKeyMap.Filter.SetEnabled(true)
+	m.ShowRessources.SetEnabled(true)
+	m.ShowTested.SetEnabled(true)
+	m.GenerateListTested.SetEnabled(true)
+}
+
+// EnableKindListKeys is the set of keys for the kind list
+func (m *ListKeyMap) EnableKindListKeys() {
+	m.enableK8SKeys()
+	m.Help.SetEnabled(true)
+	m.ListKeyMap.Filter.SetEnabled(true)
+	m.Back.SetEnabled(false)
+	m.Select.SetEnabled(false)
+	m.UpDown.SetEnabled(true)
+	m.LeftRight.SetEnabled(true)
+	m.Back.SetEnabled(true)
+}
+
+// EnablePrintK8SKeys is the set of keys for the k8s print view
+func (m *ListKeyMap) EnablePrintK8SKeys() {
+	m.disableK8SKeys()
+	m.disableViewPortKeys()
+	m.ShowDependanciesFiles.SetEnabled(true)
+	m.Back.SetEnabled(true)
+	m.Select.SetEnabled(false)
+	m.ListKeyMap.Filter.SetEnabled(false)
+	m.UpDown.SetEnabled(false)
+	m.LeftRight.SetEnabled(false)
 }

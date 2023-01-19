@@ -103,6 +103,6 @@ func (m Model) Width() int {
 }
 
 // SetWidth sets the width of the view
-func (m Model) SetWidth(w int) {
+func (m *Model) SetWidth(w int) {
 	m.width = w
 }
