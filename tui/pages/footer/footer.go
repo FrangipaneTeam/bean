@@ -19,7 +19,7 @@ var (
 type Model struct {
 	tea.Model
 	Message string
-	Width   int
+	width   int
 	Help    help.Model
 	Keymap  *tui.ListKeyMap
 }
@@ -40,7 +40,7 @@ func New(w int, km *tui.ListKeyMap) Model {
 	help.Styles.FullDesc = tui.HelpFeintText
 	return Model{
 		Message: "FrangipaneTeam",
-		Width:   w,
+		width:   w,
 		Help:    help,
 		Keymap:  km,
 	}
@@ -60,7 +60,7 @@ func (m Model) View() string {
 		tui.Divider, strings.Trim(m.Message, "\n"), tui.Divider,
 	)
 
-	wP := m.Width - tui.AppStyle.GetHorizontalPadding()
+	wP := m.width - tui.AppStyle.GetHorizontalPadding()
 	f := lipgloss.NewStyle().Height(3).Width(wP)
 
 	ui := lipgloss.Place(
@@ -85,9 +85,24 @@ func (m Model) View() string {
 }
 
 // Resize resizes the model
-func (m Model) Resize(width, height int) Model {
-	m.Width = width
-	m.Help.Width = width
+// func (m Model) Resize(width, height int) Model {
+// 	m.width = width
+// 	m.Help.Width = width
 
-	return m
+// 	return m
+// }
+
+// Height return the height of the view
+func (m Model) Height() int {
+	return lipgloss.Height(m.View())
+}
+
+// Width return the width of the view
+func (m Model) Width() int {
+	return lipgloss.Width(m.View())
+}
+
+// SetWidth sets the width of the view
+func (m Model) SetWidth(w int) {
+	m.width = w
 }

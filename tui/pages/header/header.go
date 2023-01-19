@@ -26,7 +26,7 @@ type Model struct {
 	activityFrom           interface{}
 	notifyCrds             chan pages.NotifyActivity
 	notifyExamples         chan pages.NotifyActivity
-	Width                  int
+	width                  int
 	Notification           string
 	NotificationOK         string
 	// errorPanel             errorpanel.Model
@@ -60,7 +60,7 @@ func New(title string, desc string, w int, c config.Provider) Model {
 		spinner:        s,
 		notifyCrds:     make(chan pages.NotifyActivity),
 		notifyExamples: make(chan pages.NotifyActivity),
-		Width:          w,
+		width:          w,
 		config:         c,
 	}
 }
@@ -148,7 +148,7 @@ func (m Model) View() string {
 
 	t := strings.Trim(m.Notification, "\n")
 	fmt.Fprintf(&notification, "%s %s %s", tui.Divider, t, m.NotificationOK)
-	wP := m.Width - tui.AppStyle.GetHorizontalPadding()
+	wP := m.width - tui.AppStyle.GetHorizontalPadding()
 
 	header = lipgloss.JoinHorizontal(
 		lipgloss.Top,
@@ -179,4 +179,19 @@ type tickMsg time.Time
 func tick() tea.Msg {
 	time.Sleep(time.Second)
 	return tickMsg{}
+}
+
+// Height return the height of the view
+func (m Model) Height() int {
+	return lipgloss.Height(m.View())
+}
+
+// Width return the width of the view
+func (m Model) Width() int {
+	return lipgloss.Width(m.View())
+}
+
+// SetWidth set the width of the view
+func (m *Model) SetWidth(w int) {
+	m.width = w
 }

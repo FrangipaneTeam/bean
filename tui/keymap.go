@@ -147,8 +147,8 @@ func (m *ListKeyMap) YamlHelp() {
 		{m.UpDown, m.LeftRight, m.Back},
 		{m.ForwardSlash, m.Enter},
 		{m.Help, m.Quit},
-		{m.Apply, m.Delete, m.Print, m.Get},
-		{m.ShowDependanciesFiles},
+		{m.Apply, m.Delete, m.Print},
+		{m.Get, m.ShowDependanciesFiles},
 	}
 }
 
