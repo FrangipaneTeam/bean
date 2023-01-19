@@ -2,6 +2,7 @@
 package examples
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -242,7 +243,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.Print):
 			if m.viewName == pRessources {
 				m.viewName = pK8S
-				// m.k8sOutput = fmt.Sprintf("coucou %s", m.currentList.SelectedItem().(*tui.Example).Title())
 				m.viewName = pPrintActions
 				m.keys.YamlActionHelp()
 			}
@@ -284,9 +284,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.keys.Get.SetEnabled(true)
 				}
 
-				file := m.currentList.SelectedItem().(*tui.Example).Title()
-				extra := m.currentList.SelectedItem().(*tui.Example).HaveExtraFile()
-				secret := m.currentList.SelectedItem().(*tui.Example).HaveSecretFile()
+				// TODO: in witch case m.currentList.SelectedItem() == nil ?
+				if m.currentList.SelectedItem() == nil {
+					cmd := m.errorPanel.Init()
+					m.errorPanel = m.errorPanel.RaiseError("no item selected, empty list ?", errors.New("m.currentList.SelectedItem() == nil"))
+					m.errorRaised = true
+					m.header.NotificationOK = tui.ErrorMark
+					m.keys.ErrorHelp()
+					return m, cmd
+				}
+
+				selected := m.currentList.SelectedItem().(*tui.Example)
+
+				file := selected.Title()
+				extra := selected.HaveExtraFile()
+				secret := selected.HaveSecretFile()
 				files := []string{file}
 
 				if extra {
@@ -299,8 +311,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					files = append(files, f)
 				}
 
-				if m.showDependenciesFiles && m.currentList.SelectedItem().(*tui.Example).HaveDependenciesFiles() {
-					d := m.currentList.SelectedItem().(*tui.Example).DependenciesFilesList()
+				if m.showDependenciesFiles && selected.HaveDependenciesFiles() {
+					d := selected.DependenciesFilesList()
 					files = append(files, d...)
 				}
 
@@ -318,7 +330,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.keys.GetHelp()
 					m.keys.Get.SetEnabled(false)
 					k8sCmdList[cmdID].verb = "get"
-					m.k8sCurrentKind = m.currentList.SelectedItem().(*tui.Example).Description()
+					m.k8sCurrentKind = selected.Description()
 
 				case key.Matches(msg, m.keys.Apply):
 					m.k8sProgressMsg = "apply sent !"
@@ -545,10 +557,11 @@ func (m model) View() string {
 			center.WriteString(lipgloss.NewStyle().Render(ui))
 
 		case pPrintActions:
-			selectedFile := m.currentList.SelectedItem().(*tui.Example).Title()
+			selected := m.currentList.SelectedItem().(*tui.Example)
+			selectedFile := selected.Title()
 			yamlFile := ""
 
-			if m.currentList.SelectedItem().(*tui.Example).HaveSecretFile() {
+			if selected.HaveSecretFile() {
 				yamlFile = fmt.Sprintf("%s,%s.secret", selectedFile, selectedFile)
 			} else {
 				yamlFile = selectedFile
@@ -560,7 +573,7 @@ func (m model) View() string {
 				lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl get -f " + yamlFile),
 			}
 
-			if m.currentList.SelectedItem().(*tui.Example).HaveExtraFile() {
+			if selected.HaveExtraFile() {
 				extraFile := selectedFile + ".extra"
 				str = append(str,
 					lipgloss.NewStyle().Padding(2, 0, 2, 0).Underline(true).Render("Extra file:"),
@@ -570,8 +583,8 @@ func (m model) View() string {
 				)
 			}
 
-			if m.showDependenciesFiles && m.currentList.SelectedItem().(*tui.Example).HaveDependenciesFiles() {
-				files := strings.Join(m.currentList.SelectedItem().(*tui.Example).DependenciesFilesList(), ",")
+			if m.showDependenciesFiles && selected.HaveDependenciesFiles() {
+				files := strings.Join(selected.DependenciesFilesList(), ",")
 				str = append(str,
 					lipgloss.NewStyle().Padding(2, 0, 2, 0).Underline(true).Render("Dependencies file:"),
 					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl apply -f "+files),
