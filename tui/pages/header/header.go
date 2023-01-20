@@ -93,22 +93,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		return m, cmd
 
 	case pages.ResponseCRDMsg:
-		if m.crdRecentActivity {
-			return m, nil
-		}
-		m.hideNotify = 5
-		m.crdRecentActivity = true
-		m.activityFrom = msg
 		cmds = append(cmds, pages.WaitForCrdActivity(m.notifyCrds), tick)
+		if !m.crdRecentActivity {
+			m.hideNotify = 5
+			m.crdRecentActivity = true
+			m.activityFrom = msg
+		}
 
 	case pages.ResponseExamplesMsg:
-		if m.examplesRecentActivity {
-			return m, nil
-		}
-		m.hideNotify = 5
-		m.examplesRecentActivity = true
-		m.activityFrom = msg
 		cmds = append(cmds, pages.WaitForExamplesActivity(m.notifyExamples), tick)
+		if !m.examplesRecentActivity {
+			m.hideNotify = 5
+			m.examplesRecentActivity = true
+			m.activityFrom = msg
+		}
 	}
 	cmds = append(cmds, cmd)
 

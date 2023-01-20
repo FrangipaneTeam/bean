@@ -393,9 +393,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.header.NotificationOK = tui.CheckMark
 
 	case tui.LoadedExamples:
+		m.header.Notification = fmt.Sprintf("loaded new examples @ %s", time.Now().Format("15:04:05"))
+		m.header.NotificationOK = tui.CheckMark
 		m.exampleList = msg.Examples
-		cmd = m.currentList.SetItems(msg.Examples[m.listName])
-		return m, cmd
+		m.currentList.SetItems(msg.Examples[m.listName])
 
 	case tools.Markdown:
 		m.viewName = pViewPort
@@ -409,6 +410,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.errorRaised = true
+		m.header.Notification = msg.Reason
 		m.header.NotificationOK = tui.ErrorMark
 		return m, cmd
 
