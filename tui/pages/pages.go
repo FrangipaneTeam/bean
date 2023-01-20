@@ -3,6 +3,7 @@ package pages
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/tools"
@@ -75,10 +76,13 @@ func ListenForCRDActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 							}
 						}
 					}
-					f := NotifyActivity{
-						FileName: event.Name,
+					switch filepath.Ext(event.Name) {
+					case ".yaml", ".yml":
+						f := NotifyActivity{
+							FileName: event.Name,
+						}
+						ch <- f
 					}
-					ch <- f
 				case err, ok := <-watcher.Errors:
 					if !ok {
 						return tools.ErrorMsg{
@@ -130,10 +134,14 @@ func ListenForExamplesActivity(ch chan NotifyActivity, c config.Provider) tea.Cm
 							Cause:  err,
 						}
 					}
-					f := NotifyActivity{
-						FileName: event.Name,
+					// ignore changes if the file extension is not yaml, yml, secret or extra
+					switch filepath.Ext(event.Name) {
+					case ".yaml", ".yml", ".secret", ".extra":
+						f := NotifyActivity{
+							FileName: event.Name,
+						}
+						ch <- f
 					}
-					ch <- f
 				case err, ok := <-watcher.Errors:
 					if !ok {
 						return tools.ErrorMsg{
