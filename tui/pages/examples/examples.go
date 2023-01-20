@@ -554,6 +554,11 @@ func (m model) View() string {
 			reloadOutput := ""
 
 			h := "Using ressource : " + m.k8sCurrentKind
+			if !m.keys.Apply.Enabled() {
+				h = "kubectl get managed"
+
+			}
+
 			h = lipgloss.NewStyle().Background(tui.RedColour).Margin(0, 0, 1, 0).Render(h)
 
 			if cmd.done {
