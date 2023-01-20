@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	"time"
 
@@ -13,16 +12,18 @@ import (
 	"github.com/FrangipaneTeam/bean/tools"
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/FrangipaneTeam/bean/tui/pages/footer"
 	"github.com/FrangipaneTeam/bean/tui/pages/header"
+	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/FrangipaneTeam/bean/tui/pages/md"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"golang.org/x/term"
 )
 
 const (
@@ -31,11 +32,12 @@ const (
 	pRessources   = "ressources"
 	pPrintActions = "printActions"
 	pK8S          = "k8s"
+	pDialogBox    = "dialogbox"
 )
 
 var (
 	letters    = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	k8sCmdList map[string]*k8sCmd
+	k8sCmdList map[string]*k8s.Cmd
 )
 
 func randSeq(n int) string {
@@ -47,10 +49,14 @@ func randSeq(n int) string {
 }
 
 type k8sCmd struct {
-	done      bool
+	ID        string
+	Done      bool
 	canceled  bool
+	confirmed bool
 	verb      string
 	cmdOutput string
+	Files     []string
+	Kind      string
 }
 
 type model struct {
@@ -60,8 +66,10 @@ type model struct {
 	listName      string
 	width, height int
 	keys          *tui.ListKeyMap
+	oldKeys       *tui.ListKeyMap
 
-	viewName string
+	viewName    string
+	oldViewName string
 
 	showDependenciesFiles bool
 
@@ -71,18 +79,22 @@ type model struct {
 	footer     footer.Model
 	errorPanel errorpanel.Model
 	markdown   md.Model
+	k8s        k8s.Model
 
 	config config.Provider
 
-	k8sCurrentFiles     string
 	k8sCurrentIDView    string
 	k8sProgressMsg      string
-	k8sCurrentKind      string
 	k8sGetWithoutAction bool
 	progressK8SGet      progress.Model
 	tickRunning         bool
 
 	previousItemPostion int
+
+	listOldHeight int
+	centerHeight  int
+
+	dialogbox dialogbox.Model
 }
 
 type tickK8SGet time.Time
@@ -90,11 +102,14 @@ type tickK8SGet time.Time
 // New returns a new model of the examples page.
 // nolint: golint // model not used outside of this package
 func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
-	physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
-	wP := physicalWidth - tui.AppStyle.GetHorizontalPadding()
-	hP := physicalHeight - tui.AppStyle.GetVerticalPadding()
+	h, v := tui.AppStyle.GetFrameSize()
+	// physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
+	// wP := physicalWidth - tui.AppStyle.GetHorizontalPadding()
+	// hP := physicalHeight - tui.AppStyle.GetVerticalPadding()
 
-	listKeys := tui.NewListKeyMap()
+	rootKeys := tui.NewListKeyMap()
+	dialogKeys := tui.NewListKeyMap()
+	// listKeys.EnableRootKeys()
 	delegate := list.NewDefaultDelegate()
 
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
@@ -134,20 +149,21 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	header := header.New(
 		"Bean "+version,
 		"A FrangipaneTeam bin",
-		width,
+		width-h,
 		c,
 	)
 
-	footer := footer.New(width, listKeys)
+	footer := footer.New(width-h, rootKeys)
+	headerHeight := header.Height()
+	footerHeight := footer.Height()
 
-	// we have header and footer, we need to reduce list height
-	list.SetWidth(width - tui.AppStyle.GetHorizontalPadding())
-	list.SetHeight(height - header.Height() - footer.Height() - tui.AppStyle.GetVerticalPadding())
+	list.SetSize(width-h, height-v-headerHeight-footerHeight)
 
-	k8sCmdList = make(map[string]*k8sCmd)
+	k8sCmdList = make(map[string]*k8s.Cmd)
 
 	// default activated keys
-	listKeys.EnableRootKeys()
+	rootKeys.EnableRootKeys()
+	dialogKeys.EnableDialogBoxKeys()
 
 	return model{
 		exampleList: e.Examples,
@@ -155,14 +171,21 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 		listName:    "-",
 		viewName:    pRoot,
 
-		keys:       listKeys,
+		keys:       rootKeys,
 		header:     header,
 		footer:     footer,
-		errorPanel: errorpanel.New(width, int(float64(height)*0.6)),
-		markdown:   md.New(wP, hP-20),
-		width:      width,
-		height:     height,
-		config:     c,
+		errorPanel: errorpanel.New(width-h, height-v-headerHeight-footerHeight),
+		markdown:   md.New(width-h, height-v-headerHeight-footerHeight),
+		dialogbox: dialogbox.New(
+			width-h,
+			height-v-headerHeight-footerHeight,
+			dialogKeys,
+		),
+		k8s:          k8s.New(rootKeys),
+		width:        width - h,
+		height:       height - v,
+		centerHeight: height - v - headerHeight - footerHeight,
+		config:       c,
 
 		showDependenciesFiles: true,
 		progressK8SGet: progress.New(
@@ -208,11 +231,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.Back):
 			m.errorRaised = false
 			m.tickRunning = false
-			m.k8sCurrentFiles = ""
 
 			// back to the list, cancel all k8sCmd
 			for _, v := range k8sCmdList {
-				v.canceled = true
+				v.Canceled = true
 			}
 
 			cmd = m.progressK8SGet.SetPercent(0)
@@ -220,18 +242,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			switch m.viewName {
 			case pRessources:
-				m, cmd := m.rootView()
-				m.keys.EnableRootKeys()
+				m, cmd = m.rootView()
 				return m, cmd
 
 			case pViewPort:
 				m.viewName = pRoot
 				m.keys.EnableRootKeys()
+				return m, cmd
 
-			case pPrintActions, pK8S:
+			case pPrintActions, pK8S, pDialogBox:
 				if m.viewName == pK8S && !m.keys.Apply.Enabled() {
-					m.keys.EnableRootKeys()
-					m, cmd := m.rootView()
+					m, cmd = m.rootView()
 					return m, cmd
 				}
 
@@ -247,23 +268,67 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, m.keys.Select):
-			if m.viewName != pRoot {
-				return m, nil
-			}
-			title := m.currentList.SelectedItem().(*tui.Example).Title()
-			if m.currentList.FilterState() == list.FilterApplied {
-				m.currentList.ResetFilter()
-			}
+			switch m.viewName {
+			case pDialogBox:
+				var newModel model
+				var cmds []tea.Cmd
+				var k8sCmd *k8s.Cmd
 
-			m.keys.EnableKindListKeys()
+				if m.dialogbox.ActiveButton == 2 {
+					newModel = m
+					newModel.header.Notification = "cancel delete"
+					newModel.header.NotificationOK = tui.ErrorMark
+					newModel.viewName = m.oldViewName
+					*newModel.keys = *m.oldKeys
+				} else {
+					m.header.NotificationOK = tui.RunningMark
+					newModel, k8sCmd, cmd = m.generateK8SFiles()
+					if cmd != nil {
+						newModel.viewName = m.oldViewName
+						*newModel.keys = *m.oldKeys
+						return newModel, cmd
+					}
 
-			m, cmd = m.showYaml(title)
-			m.viewName = pRessources
-			m.previousItemPostion = m.currentList.Index()
-			return m, cmd
+					newModel.k8sProgressMsg = "delete sent !"
+					k8sCmd.Verb = "delete"
+
+					newModel.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
+					newModel.header.NotificationOK = tui.RunningMark
+
+					k8sCmdList[k8sCmd.ID] = k8sCmd
+					cmd = tools.Kubectl(k8sCmd)
+
+					newModel.viewName = m.oldViewName
+					*newModel.keys = *m.oldKeys
+
+					cmds = append(cmds, cmd)
+				}
+
+				if newModel.viewName == pK8S {
+					cmds = append(cmds, m.tickCmd())
+				}
+
+				return newModel, tea.Batch(cmds...)
+
+			case pRoot:
+				title := m.currentList.SelectedItem().(*tui.Example).Title()
+				if m.currentList.FilterState() == list.FilterApplied {
+					m.currentList.ResetFilter()
+				}
+
+				m.keys.EnableKindListKeys()
+
+				m, cmd = m.showYaml(title)
+				m.viewName = pRessources
+
+				m.currentList.Select(0)
+
+				return m, cmd
+			}
 
 		case key.Matches(msg, m.keys.Print):
-			m.keys.EnablePrintK8SKeys()
+			m.keys.EnableViewPortKeys()
+			m.keys.ShowDependanciesFiles.SetEnabled(true)
 			m.viewName = pPrintActions
 			return m, nil
 
@@ -271,8 +336,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.viewName != pK8S {
 				m.footer.Help.ShowAll = !m.footer.Help.ShowAll
 				m.footer.Help.Width = m.width
+
+				_, v := tui.AppStyle.GetFrameSize()
+				listHeight := m.currentList.Height()
+				helpHeight := lipgloss.Height(m.footer.Help.View(m.keys))
+
+				if m.footer.Help.ShowAll {
+					m.listOldHeight = listHeight
+					m.centerHeight = listHeight - helpHeight + 1
+				} else {
+					m.centerHeight = m.listOldHeight
+				}
+				m.currentList.SetHeight(m.centerHeight)
+				m.errorPanel.SetSize(m.width-v, m.centerHeight)
+				m.markdown.SetSize(m.width, m.centerHeight)
 			}
-			return m, nil
+			return m, cmd
 
 		case key.Matches(msg, m.keys.ShowRessources):
 			m.keys.EnableViewPortKeys()
@@ -300,97 +379,74 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.currentList.NewStatusMessage(fmt.Sprintf("Show dependencies files →  %t", m.showDependenciesFiles))
 			return m, cmd
 
-		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply), key.Matches(msg, m.keys.Delete):
-			// if m.viewName != pK8S {
-			// 	m.keys.Get.SetEnabled(true)
-			// }
-
+		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply):
 			// TODO: in witch case m.currentList.SelectedItem() == nil ?
-			if m.currentList.SelectedItem() == nil {
-				cmd := m.errorPanel.Init()
-				m.errorPanel = m.errorPanel.RaiseError("no item selected, empty list ?", errors.New("m.currentList.SelectedItem() == nil"))
-				m.errorRaised = true
-				m.header.NotificationOK = tui.ErrorMark
+			m, k8sCmd, cmd := m.generateK8SFiles()
+			if cmd != nil {
 				return m, cmd
 			}
 
-			selected := m.currentList.SelectedItem().(*tui.Example)
-
-			file := selected.Title()
-			extra := selected.HaveExtraFile()
-			secret := selected.HaveSecretFile()
-			files := []string{file}
-
-			if extra {
-				f := fmt.Sprintf("%s.extra", file)
-				files = append(files, f)
-			}
-
-			if secret {
-				f := fmt.Sprintf("%s.secret", file)
-				files = append(files, f)
-			}
-
-			if m.showDependenciesFiles && selected.HaveDependenciesFiles() {
-				d := selected.DependenciesFilesList()
-				files = append(files, d...)
-			}
-
-			cmdID := randSeq(5)
-			k8sCmdList[cmdID] = &k8sCmd{
-				done: false,
-			}
-
-			verb := "unknown"
 			switch {
 			case key.Matches(msg, m.keys.Get):
 				m.viewName = pK8S
-				m.k8sCurrentIDView = cmdID
-				verb = "managed"
+				m.k8sCurrentIDView = k8sCmd.ID
 				m.keys.Get.SetEnabled(false)
 				m.keys.Print.SetEnabled(false)
 				m.keys.ShowDependanciesFiles.SetEnabled(false)
 				m.keys.Select.SetEnabled(false)
 				m.keys.Back.SetEnabled(true)
 				m.keys.Help.SetEnabled(false)
-				k8sCmdList[cmdID].verb = "get"
-				m.k8sCurrentKind = selected.Description()
+				k8sCmd.Verb = "managed"
 
 			case key.Matches(msg, m.keys.Apply):
 				m.k8sProgressMsg = "apply sent !"
-				verb = "apply"
-				k8sCmdList[cmdID].verb = "apply"
+				k8sCmd.Verb = "apply"
 
 			case key.Matches(msg, m.keys.Delete):
 				m.k8sProgressMsg = "delete sent !"
-				verb = "delete"
-				k8sCmdList[cmdID].verb = "delete"
+				k8sCmd.Verb = "delete"
 			}
 
-			filesJ := strings.Join(files, ",")
-			m.k8sCurrentFiles = filesJ
-			m.header.Notification = fmt.Sprintf("k %s @ %s", verb, time.Now().Format("15:04:05"))
+			m.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
 			m.header.NotificationOK = tui.RunningMark
-			cmd = tools.Kubectl(verb, filesJ, cmdID)
+
+			k8sCmdList[k8sCmd.ID] = k8sCmd
+			cmd = tools.Kubectl(k8sCmd)
 			return m, cmd
 		}
 
 	case tea.WindowSizeMsg:
-		m.header.Notification = "resizing"
-		top, right, bottom, left := tui.AppStyle.GetPadding()
-		m.width, m.height = msg.Width-left-right, msg.Height-top-bottom
-		centerH := m.height - m.header.Height() - m.footer.Height()
+		// m.header.Notification = "resizing"
+		headerHeight := m.header.Height()
+		footerHeight := m.footer.Height()
 
-		m.header.SetWidth(msg.Width)
-		m.footer.SetWidth(msg.Width)
+		h, v := tui.AppStyle.GetFrameSize()
 
-		m.markdown.Width = m.width
-		m.markdown.Viewport.Width = m.width - right - left
-		m.markdown.Viewport.Height = centerH
+		m.width, m.height = msg.Width-h, msg.Height-v
+		centerH := m.height - headerHeight - footerHeight
+		m.centerHeight = centerH
+
+		m.header.SetWidth(m.width)
+		m.footer.SetWidth(m.width)
 
 		m.currentList.SetSize(m.width, centerH)
-		m.errorPanel.Resize(m.width, centerH)
-		m.header.NotificationOK = tui.CheckMark
+		m.dialogbox.SetSize(m.width, centerH)
+		m.errorPanel.SetSize(m.width, centerH)
+		m.markdown.SetSize(m.width, centerH)
+		// m.header.NotificationOK = tui.CheckMark
+		return m, nil
+
+	case k8s.Message:
+		question := "Delete all ressources ?"
+		okValue := "No Fear !"
+		cancelValue := "I'm scared !"
+		m.dialogbox.SetDialogBox(question, okValue, cancelValue)
+		m.oldViewName = m.viewName
+		m.oldKeys = &tui.ListKeyMap{}
+		*m.oldKeys = *m.keys
+		m.viewName = pDialogBox
+		m.keys.EnableDialogBoxKeys()
+		return m, nil
 
 	case tui.LoadedExamples:
 		m.header.Notification = fmt.Sprintf("loaded new examples @ %s", time.Now().Format("15:04:05"))
@@ -400,7 +456,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tools.Markdown:
 		m.viewName = pViewPort
-
 		m.markdown.Viewport.SetContent(msg.Content)
 		m.markdown.Viewport.GotoTop()
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
@@ -410,40 +465,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.errorRaised = true
-		m.header.Notification = msg.Reason
 		m.header.NotificationOK = tui.ErrorMark
 		return m, cmd
 
 	case tui.ListTestedDone:
-		cmd := m.currentList.NewStatusMessage("List tested generated")
+		cmd = m.currentList.NewStatusMessage("List tested generated")
 		return m, cmd
 
-	case tools.KubectlResult:
-		k8sCmd := k8sCmdList[msg.CmdID]
-
-		k8sCmd.cmdOutput = msg.Out
-
-		if k8sCmd.canceled {
-			// m.currentList.SetItem(listIndex, listMsg)
-			delete(k8sCmdList, msg.CmdID)
+	case *k8s.Cmd:
+		if msg.Canceled {
+			delete(k8sCmdList, msg.ID)
 			return m, nil
 		}
-		k8sCmdList[msg.CmdID].done = true
 
 		switch msg.Verb {
 		case "apply", "delete":
 			m.k8sProgressMsg = ""
 			m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
 			m.header.NotificationOK = tui.CheckMark
-			// cmd := m.currentList.NewStatusMessage(fmt.Sprintf("kubectl %s ok", msg.Verb))
+			msg.Done = true
 			return m, cmd
 
 		case "managed":
 			m.viewName = pK8S
-			m.k8sCurrentIDView = msg.CmdID
+			m.k8sCurrentIDView = msg.ID
 			m.k8sProgressMsg = ""
 			m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
 			m.header.NotificationOK = tui.CheckMark
+			msg.Done = true
 			if !m.tickRunning {
 				m.tickRunning = true
 				cmd = m.tickCmd()
@@ -452,17 +501,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tickK8SGet:
+		if m.viewName == pDialogBox {
+			return m, nil
+		}
 		if m.tickRunning {
 			var kCmd tea.Cmd
 			if m.progressK8SGet.Percent() == 1.0 {
 				m.progressK8SGet.SetPercent(0)
 
-				cmdID := randSeq(5)
-				kCmd = tools.Kubectl("managed", m.k8sCurrentFiles, cmdID)
-				k8sCmdList[cmdID] = &k8sCmd{
-					verb: "managed",
-				}
-				// m.k8sOutput = ""
+				kCmd = tools.Kubectl(k8sCmdList[m.k8sCurrentIDView])
 			}
 
 			// Note that you can also use progress.Model.SetPercent to set the
@@ -497,8 +544,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.viewName == pViewPort {
+	if m.viewName == pViewPort || m.viewName == pPrintActions {
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	m.k8s, cmd = m.k8s.Update(msg)
+	cmds = append(cmds, cmd)
+
+	if m.viewName == pDialogBox {
+		m.dialogbox, cmd = m.dialogbox.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -507,9 +562,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View returns the string representation of the model.
 func (m model) View() string {
-	physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
 	doc := strings.Builder{}
-	h := lipgloss.Height
 	header := strings.Builder{}
 	footer := strings.Builder{}
 	center := strings.Builder{}
@@ -524,51 +577,41 @@ func (m model) View() string {
 		footer.WriteString(m.footer.View())
 	}
 
-	wP := physicalWidth - tui.AppStyle.GetHorizontalPadding()
-	hP := physicalHeight - tui.AppStyle.GetVerticalPadding()
-
-	hCenter := hP - h(header.String()) - h(footer.String())
-
 	if m.errorRaised {
-		errorP := lipgloss.NewStyle().
-			Height(hCenter).
-			Render(m.errorPanel.View())
-
-		center.WriteString(errorP)
+		center.WriteString(m.errorPanel.View())
 	} else {
 		switch m.viewName {
-		case pViewPort:
-			ui := lipgloss.Place(
-				wP,
-				hCenter,
-				lipgloss.Center,
-				lipgloss.Center,
-				lipgloss.NewStyle().Padding(1, 0, 1, 0).Render(m.markdown.Viewport.View()),
-			)
+		case pDialogBox:
+			center.WriteString(m.dialogbox.View())
 
-			center.WriteString(lipgloss.NewStyle().Render(ui))
+		case pViewPort:
+			center.WriteString(m.markdown.Viewport.View())
 
 		case pK8S:
 			cmd := k8sCmdList[m.k8sCurrentIDView]
 			getOutput := "loading..."
+			if cmd.Done {
+				getOutput = cmd.Result
+			}
 			reloadOutput := ""
 
-			h := "Using ressource : " + m.k8sCurrentKind
+			h := "Using ressource : " + cmd.Kind
 			if !m.keys.Apply.Enabled() {
 				h = "kubectl get managed"
-
 			}
 
-			h = lipgloss.NewStyle().Background(tui.RedColour).Margin(0, 0, 1, 0).Render(h)
+			h = lipgloss.NewStyle().Background(tui.NotificationColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0).Render(h)
+			hHeight := lipgloss.Height(h)
+			reloadHeight := lipgloss.Height(reloadOutput)
 
-			if cmd.done {
-				reloadOutput = fmt.Sprintf("%s reloading... %s", m.progressK8SGet.View(), m.k8sProgressMsg)
-				reloadOutput = lipgloss.NewStyle().MaxWidth(wP).Margin(1, 0, 1, 0).Render(reloadOutput)
-				cmd := lipgloss.NewStyle().Padding(2).Render(cmd.cmdOutput)
-				getOutput = lipgloss.NewStyle().MaxWidth(wP).Border(lipgloss.RoundedBorder()).Render(cmd)
-			}
+			boxHeight := m.centerHeight - hHeight - reloadHeight - 4
+			reloadOutput = fmt.Sprintf("%s reloading... %s", m.progressK8SGet.View(), m.k8sProgressMsg)
+			reloadOutput = lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Margin(1, 0, 1, 0).Render(reloadOutput)
+			cmdResult := lipgloss.NewStyle().Width(m.width - 2).MaxWidth(m.width).MaxHeight(boxHeight - 2).Padding(1).Render(getOutput)
+			getOutput = lipgloss.NewStyle().Width(m.width - 2).Height(boxHeight).Border(lipgloss.RoundedBorder()).Render(cmdResult)
+
 			ui := lipgloss.JoinVertical(lipgloss.Center, h, getOutput, reloadOutput)
-			dialog := lipgloss.Place(wP, hCenter,
+			dialog := lipgloss.Place(m.width, m.centerHeight,
 				lipgloss.Center, lipgloss.Center,
 				lipgloss.NewStyle().Render(ui),
 			)
@@ -576,15 +619,7 @@ func (m model) View() string {
 			center.WriteString(dialog)
 
 		case pRoot, pRessources:
-			ui := lipgloss.Place(
-				wP,
-				hCenter,
-				lipgloss.Left,
-				lipgloss.Top,
-				lipgloss.NewStyle().Padding(1, 0, 0, 0).Render(m.currentList.View()),
-			)
-
-			center.WriteString(lipgloss.NewStyle().Render(ui))
+			center.WriteString(lipgloss.NewStyle().Render(m.currentList.View()))
 
 		case pPrintActions:
 			selected := m.currentList.SelectedItem().(*tui.Example)
@@ -598,56 +633,59 @@ func (m model) View() string {
 			}
 
 			str := []string{
-				lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl apply -f " + yamlFile),
-				lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl delete -f " + yamlFile),
-				lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl get -f " + yamlFile),
+				"# Base file :",
+				fmt.Sprintf("* kubectl apply -f %s", yamlFile),
+				fmt.Sprintf("* kubectl delete -f %s", yamlFile),
+				fmt.Sprintf("* kubectl get -f %s", yamlFile),
 			}
 
 			if selected.HaveExtraFile() {
 				extraFile := selectedFile + ".extra"
 				str = append(str,
-					lipgloss.NewStyle().Padding(2, 0, 2, 0).Underline(true).Render("Extra file:"),
-					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl apply -f "+extraFile),
-					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl delete -f "+extraFile),
-					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl get -f "+extraFile),
+					"# Extra file:",
+					fmt.Sprintf("* kubectl apply -f %s", extraFile),
+					fmt.Sprintf("* kubectl delete -f %s", extraFile),
+					fmt.Sprintf("* kubectl get -f %s", extraFile),
 				)
 			}
 
 			if m.showDependenciesFiles && selected.HaveDependenciesFiles() {
 				files := strings.Join(selected.DependenciesFilesList(), ",")
 				str = append(str,
-					lipgloss.NewStyle().Padding(2, 0, 2, 0).Underline(true).Render("Dependencies file:"),
-					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl apply -f "+files),
-					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl delete -f "+files),
-					lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center).Render("kubectl get -f "+files),
+					"# Dependencies :",
+					fmt.Sprintf("* kubectl apply -f %s", files),
+					fmt.Sprintf("* kubectl delete -f %s", files),
+					fmt.Sprintf("* kubectl get -f %s", files),
 				)
 			}
 
-			actions := lipgloss.JoinVertical(
-				lipgloss.Center,
-				str...,
+			renderer, _ := glamour.NewTermRenderer(
+				glamour.WithAutoStyle(),
+				glamour.WithWordWrap(m.width),
+				glamour.WithStylePath("dracula"),
 			)
+			ui, _ := renderer.Render(strings.Join(str, "\n"))
+			m.markdown.Viewport.SetContent(ui)
 
-			actions = lipgloss.NewStyle().Copy().Align(lipgloss.Center, lipgloss.Center).Foreground(tui.HighlightColour).Height(hCenter).Width(wP).Render(actions)
-			center.WriteString(lipgloss.NewStyle().Render(actions))
+			center.WriteString(m.markdown.Viewport.View())
 		}
 	}
 
 	// Render the document
 	doc.WriteString(lipgloss.JoinVertical(
-		lipgloss.Center,
+		lipgloss.Left,
 		header.String(),
 		center.String(),
 		footer.String(),
 	))
 
-	if physicalWidth > 0 {
-		tui.AppStyle = tui.AppStyle.MaxWidth(physicalWidth).MaxHeight(physicalHeight)
-	}
+	// if m.width > 0 {
+	// 	// physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
+	// 	tui.AppStyle = tui.AppStyle.MaxWidth(m.width).MaxHeight(m.height)
+	// }
 
 	// Okay, let's print it
 	return tui.AppStyle.Render(doc.String())
-	// return lipgloss.NewStyle().Render(doc.String())
 }
 
 func (m model) showExamples() (model, tea.Cmd) {
@@ -656,7 +694,7 @@ func (m model) showExamples() (model, tea.Cmd) {
 	m.currentList.Title = "Choose an example"
 	m.listName = "-"
 
-	m.currentList.Select(m.previousItemPostion)
+	m.currentList.Select(0)
 
 	return m, cmd
 }
@@ -665,9 +703,7 @@ func (m model) showYaml(title string) (model, tea.Cmd) {
 	var cmd tea.Cmd
 	if _, ok := m.exampleList[title]; ok {
 		i := m.exampleList[title]
-		m.currentList.ResetSelected()
 		cmd = m.currentList.SetItems(i)
-		m.currentList.Title = "Working on " + title
 		m.listName = title
 	}
 	return m, cmd
@@ -683,20 +719,62 @@ func (m model) tickCmd() tea.Cmd {
 }
 
 func (m model) rootView() (model, tea.Cmd) {
+	var cmds []tea.Cmd
 	m.viewName = pRoot
-
-	m.keys.Apply.SetEnabled(false)
-	m.keys.Delete.SetEnabled(false)
-	m.keys.Print.SetEnabled(false)
-	m.keys.Back.SetEnabled(false)
-
-	m.currentList.NewStatusMessage("back to home !")
+	m.keys.EnableRootKeys()
+	cmd := m.currentList.NewStatusMessage("back to home")
+	cmds = append(cmds, cmd)
 
 	if m.currentList.FilterState() == list.FilterApplied {
 		m.currentList.ResetFilter()
 	}
 
-	m, cmd := m.showExamples()
+	m, cmd = m.showExamples()
+	cmds = append(cmds, cmd)
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
+}
+
+func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
+	if m.currentList.SelectedItem() == nil {
+		cmd := m.errorPanel.Init()
+		m.errorPanel = m.errorPanel.RaiseError(
+			"no item selected, empty list ?",
+			errors.New("m.currentList.SelectedItem() == nil"),
+		)
+		m.errorRaised = true
+		m.header.NotificationOK = tui.ErrorMark
+		return m, nil, cmd
+	}
+
+	selectedItem := m.currentList.SelectedItem().(*tui.Example)
+
+	file := selectedItem.Title()
+	extra := selectedItem.HaveExtraFile()
+	secret := selectedItem.HaveSecretFile()
+	files := []string{file}
+
+	if extra {
+		f := fmt.Sprintf("%s.extra", file)
+		files = append(files, f)
+	}
+
+	if secret {
+		f := fmt.Sprintf("%s.secret", file)
+		files = append(files, f)
+	}
+
+	if m.showDependenciesFiles && selectedItem.HaveDependenciesFiles() {
+		d := selectedItem.DependenciesFilesList()
+		files = append(files, d...)
+	}
+
+	cmd := &k8s.Cmd{
+		ID:    randSeq(5),
+		Done:  false,
+		Files: files,
+		Kind:  selectedItem.Description(),
+	}
+
+	return m, cmd, nil
 }

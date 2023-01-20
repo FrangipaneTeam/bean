@@ -24,6 +24,7 @@ func (m Model) Init() tea.Cmd {
 func New(w, h int) Model {
 	vp := viewport.New(w, h)
 	vp.Style = lipgloss.NewStyle().
+		Width(w).
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(tui.BorderColour)
 	// PaddingRight(2)
@@ -43,4 +44,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 // View renders the model
 func (m Model) View() string {
 	return ""
+}
+
+// SetSize sets the size of the model
+func (m *Model) SetSize(w, h int) {
+	m.Width = w
+	m.Height = h
+	m.Viewport.Height = h
+	m.Viewport.Width = w
+	m.Viewport.Style = lipgloss.NewStyle().
+		Width(w).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(tui.BorderColour)
+	viewport.Sync(m.Viewport)
 }

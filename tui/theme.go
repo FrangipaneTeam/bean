@@ -21,7 +21,7 @@ var (
 	NotificationColour   = lipgloss.Color("#FF5F87")
 	special              = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
 
-	AppStyle            = lipgloss.NewStyle().Padding(2, 2)
+	AppStyle            = lipgloss.NewStyle().Padding(1)
 	TextStyle           = lipgloss.NewStyle().Foreground(TextColour)
 	FeintTextStyle      = lipgloss.NewStyle().Foreground(FeintColour)
 	VeryFeintTextStyle  = lipgloss.NewStyle().Foreground(VeryFeintColour)
@@ -33,7 +33,7 @@ var (
 		Foreground(DividerColour).
 		String()
 
-	Ellipsis      = HightlightTextStyle.Copy()
+	Ellipsis      = NotificationStyle.Copy()
 	HelpText      = TextStyle.Copy()
 	HelpFeintText = FeintTextStyle.Copy()
 

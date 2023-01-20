@@ -11,10 +11,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	subtle = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-)
-
 // Model is the model of the footer
 type Model struct {
 	tea.Model
@@ -54,43 +50,33 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 // View renders the model
 func (m Model) View() string {
 	footer := strings.Builder{}
-	// panel := tui.BorderTop.Width(m.Width).Render(text)
 	message := fmt.Sprintf(
 		"%s %s %s",
 		tui.Divider, strings.Trim(m.Message, "\n"), tui.Divider,
 	)
 
-	wP := m.width - tui.AppStyle.GetHorizontalPadding()
-	f := lipgloss.NewStyle().Height(3).Width(wP)
+	f := lipgloss.NewStyle()
 
 	ui := lipgloss.Place(
-		wP,
-		3,
+		m.width,
+		0,
 		lipgloss.Center,
 		lipgloss.Center,
 		lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, false, false).
 			BorderForeground(tui.BorderColour).
-			Foreground(subtle).
+			Foreground(tui.TextColour).
 			Render(message),
 	)
 
 	banner := lipgloss.JoinVertical(
 		lipgloss.Center,
-		m.Help.View(m.Keymap),
+		lipgloss.NewStyle().PaddingTop(1).Render(m.Help.View(m.Keymap)),
 		ui,
 	)
 	footer.WriteString(f.Render(banner))
 	return footer.String()
 }
-
-// Resize resizes the model
-// func (m Model) Resize(width, height int) Model {
-// 	m.width = width
-// 	m.Help.Width = width
-
-// 	return m
-// }
 
 // Height return the height of the view
 func (m Model) Height() int {

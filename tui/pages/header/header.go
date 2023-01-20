@@ -137,13 +137,12 @@ func (m Model) View() string {
 
 	t := strings.Trim(m.Notification, "\n")
 	fmt.Fprintf(&notification, "%s %s %s", tui.Divider, t, m.NotificationOK)
-	wP := m.width - tui.AppStyle.GetHorizontalPadding()
 
 	header = lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		lipgloss.NewStyle().Width(wP/2).Align(lipgloss.Left).Render(header),
+		lipgloss.Bottom,
+		lipgloss.NewStyle().Width(m.width/2).Align(lipgloss.Left).Render(header),
 		tui.NotificationStyle.
-			Width(wP/2).
+			Width(m.width/2).
 			Align(lipgloss.Right).
 			Render(notification.String()),
 	)
@@ -152,13 +151,14 @@ func (m Model) View() string {
 		lipgloss.Center,
 		lipgloss.NewStyle().
 			MarginBottom(1).
-			Width(wP).
+			Width(m.width/2).
 			Align(lipgloss.Center).
 			Render(nameVersion),
 		header,
+		tui.BorderBottom.Width(m.width).MarginBottom(1).String(),
 		// tui.BorderBottom.Width(wP).String(),
 	)
-	banner += "\n" + tui.BorderBottom.Width(wP).String()
+	// banner += "\n" + tui.BorderBottom.Width(m.width).String()
 
 	return banner
 }
