@@ -44,12 +44,14 @@ func Execute(version string) {
 		Repository: "bean",
 	}
 
-	res, _ := latest.Check(githubTag, c.Version)
-	if res.Outdated {
-		c.NewVersion = res.Current
+	res, err := latest.Check(githubTag, c.Version)
+	if err == nil {
+		if res.Outdated {
+			c.NewVersion = res.Current
+		}
 	}
 
-	err := rootCmd.Execute()
+	err = rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
