@@ -4,38 +4,55 @@ labels:
   - label: "feature"
     sync: true
     matcher:
-      title: "^feat.*"
+      title: "^(\\[FEAT\\]|feat).*"
       commits: "^feat.*"
 
   - label: "bugfix"
     sync: true
     matcher:
-      title: "^fix.*"
       commits: "^fix.*"
 
   - label: "documentation"
     sync: true
     matcher:
-      title: "^docs.*"
+      title: "^(\\[DOCS\\]|docs).*"
       commits: "^docs.*"
 
   - label: "ci"
     sync: true
     matcher:
-      title: "^ci.*"
+      title: "^(\\[CI\\]|ci).*"
       commits: "^ci.*"
 
   - label: "refactor"
     sync: true
     matcher:
-      title: "^refactor.*"
+      title: "^(\\[REFACTOR\\]|refactor).*"
       commits: "^refactor.*"
 
   - label: "chore"
     sync: true
     matcher:
-      title: "^chore.*"
+      title: "^(\\[CHORE\\]chore).*"
       commits: "^chore.*"
+
+  - label: "test"
+    sync: true
+    matcher:
+      title: "^(\\[TEST\\]test).*"
+      commits: "^test.*"
+
+  - label: "perf"
+    sync: true
+    matcher:
+      title: "^(\\[PERF\\]perf).*"
+      commits: "^perf.*"
+
+  - label: "style"
+    sync: true
+    matcher:
+      title: "^(\\[STYLE\\]style).*"
+      commits: "^style.*"
 
   - label: "dependencies"
     sync: true
@@ -43,6 +60,13 @@ labels:
       files:
         any: [ "go.mod" ]
 
-  - label: "bug"
+  - label: "breaking change"
+    sync: true
     matcher:
+      commits: "BREAKING CHANGE:"
+
+  - label: "bug"
+    sync: true
+    matcher:
+      title: "^(\\[(FIX|BUG)\\]|(bug|fix)).*"
       body: "(\\n|.)*- \\[x\\] bug(\\n|.)*"
