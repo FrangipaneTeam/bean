@@ -121,9 +121,7 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	list.Title = "Choose an example"
 	list.DisableQuitKeybindings()
 	list.SetShowHelp(false)
-	// list.StatusMessageLifetime = 5
 	list.SetStatusBarItemName("example", "examples")
-	// list.Help = help.Model{}`
 
 	header := header.New(
 		"Bean "+c.Version,
@@ -141,9 +139,7 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	k8sCmdList = make(map[string]*k8sCmd)
 
 	// default activated keys
-	listKeys.Apply.SetEnabled(false)
-	listKeys.Delete.SetEnabled(false)
-	listKeys.Print.SetEnabled(false)
+	listKeys.EnableRootKeys()
 
 	return model{
 		exampleList: e.Examples,
@@ -171,7 +167,6 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 
 // Init initializes the model.
 func (m model) Init() tea.Cmd {
-	m.keys.RootHelp()
 	return tea.Batch(
 		tea.EnterAltScreen,
 		m.header.Init(),
@@ -218,22 +213,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.viewName {
 			case pRessources:
 				m, cmd := m.rootView()
+				m.keys.EnableRootKeys()
 				return m, cmd
 
 			case pViewPort:
 				m.viewName = pRoot
-				m.keys.RootHelp()
+				m.keys.EnableRootKeys()
 
 			case pPrintActions, pK8S:
 				if m.viewName == pK8S && !m.keys.Apply.Enabled() {
-					m.keys.Get.SetEnabled(true)
+					m.keys.EnableRootKeys()
 					m, cmd := m.rootView()
 					return m, cmd
 				}
 
-				m.keys.Get.SetEnabled(true)
+				m.keys.EnableKindListKeys()
 				m.viewName = pRessources
-				m.keys.YamlHelp()
 				cmd = m.currentList.NewStatusMessage("back to " + m.listName)
 				// m.currentList.ResetSelected()
 				cmds = append(cmds, cmd)
@@ -243,7 +238,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
 
-		case key.Matches(msg, m.keys.Enter):
+		case key.Matches(msg, m.keys.Select):
 			if m.viewName != pRoot {
 				return m, nil
 			}
@@ -252,32 +247,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentList.ResetFilter()
 			}
 
-			m.keys.Apply.SetEnabled(true)
-			m.keys.Delete.SetEnabled(true)
-			m.keys.Print.SetEnabled(true)
+			m.keys.EnableKindListKeys()
 
 			m, cmd = m.showYaml(title)
 			m.viewName = pRessources
 			m.previousItemPostion = m.currentList.Index()
-			m.keys.YamlHelp()
 			return m, cmd
 
 		case key.Matches(msg, m.keys.Print):
-			if m.viewName == pRessources {
-				m.viewName = pK8S
-				m.viewName = pPrintActions
-				m.keys.YamlActionHelp()
-			}
+			m.keys.EnablePrintK8SKeys()
+			m.viewName = pPrintActions
 			return m, nil
 
 		case key.Matches(msg, m.keys.Help):
-			if m.viewName != pPrintActions && m.viewName != pK8S {
+			if m.viewName != pK8S {
 				m.footer.Help.ShowAll = !m.footer.Help.ShowAll
 				m.footer.Help.Width = m.width
 			}
 			return m, nil
 
 		case key.Matches(msg, m.keys.ShowRessources):
+			m.keys.EnableViewPortKeys()
+
 			if m.viewName == pRoot {
 				cmd = tools.RenderMarkdown(m.config.Path+"/list-resources.md", m.width)
 
@@ -285,6 +276,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.ShowTested):
+			m.keys.EnableViewPortKeys()
 			if m.viewName == pRoot {
 				cmd = tools.RenderMarkdown(m.config.Path+"/list-tested.md", m.width)
 
@@ -311,7 +303,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.errorPanel = m.errorPanel.RaiseError("no item selected, empty list ?", errors.New("m.currentList.SelectedItem() == nil"))
 				m.errorRaised = true
 				m.header.NotificationOK = tui.ErrorMark
-				m.keys.ErrorHelp()
 				return m, cmd
 			}
 
@@ -348,8 +339,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewName = pK8S
 				m.k8sCurrentIDView = cmdID
 				verb = "managed"
-				m.keys.GetHelp()
 				m.keys.Get.SetEnabled(false)
+				m.keys.Print.SetEnabled(false)
+				m.keys.ShowDependanciesFiles.SetEnabled(false)
+				m.keys.Select.SetEnabled(false)
+				m.keys.Back.SetEnabled(true)
+				m.keys.Help.SetEnabled(false)
 				k8sCmdList[cmdID].verb = "get"
 				m.k8sCurrentKind = selected.Description()
 
@@ -396,7 +391,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tools.Markdown:
 		m.viewName = pViewPort
-		m.keys.ViewPortHelp()
 
 		m.markdown.Viewport.SetContent(msg.Content)
 		m.markdown.Viewport.GotoTop()
@@ -408,7 +402,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.errorRaised = true
 		m.header.NotificationOK = tui.ErrorMark
-		m.keys.ErrorHelp()
 		return m, cmd
 
 	case tui.ListTestedDone:
@@ -676,11 +669,11 @@ func (m model) tickCmd() tea.Cmd {
 
 func (m model) rootView() (model, tea.Cmd) {
 	m.viewName = pRoot
-	m.keys.RootHelp()
 
 	m.keys.Apply.SetEnabled(false)
 	m.keys.Delete.SetEnabled(false)
 	m.keys.Print.SetEnabled(false)
+	m.keys.Back.SetEnabled(false)
 
 	m.currentList.NewStatusMessage("back to home !")
 
