@@ -7,7 +7,7 @@ jobs:
     name: Labeler
     runs-on: ubuntu-latest
     steps:
-      - uses: fuxingloh/multi-labeler@v1
+      - uses: fuxingloh/multi-labeler@v2
 
   validate-title:
     name: Validate title
