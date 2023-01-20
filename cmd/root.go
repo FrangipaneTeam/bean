@@ -11,6 +11,7 @@ import (
 	"github.com/FrangipaneTeam/bean/tui/pages/loading"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"github.com/tcnksm/go-latest"
 )
 
 var (
@@ -37,6 +38,17 @@ func Execute(version string) {
 	rootCmd.PersistentFlags().StringVarP(&c.Path, "path", "p", ".", "your provider path")
 	rootCmd.AddCommand(listTestedCmd)
 	c.Version = version
+
+	githubTag := &latest.GithubTag{
+		Owner:      "FrangipaneTeam",
+		Repository: "bean",
+	}
+
+	res, _ := latest.Check(githubTag, c.Version)
+	if res.Outdated {
+		c.NewVersion = res.Current
+	}
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
