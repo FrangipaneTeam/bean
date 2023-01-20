@@ -123,8 +123,16 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	list.SetShowHelp(false)
 	list.SetStatusBarItemName("example", "examples")
 
+	version := lipgloss.NewStyle().Foreground(tui.NotificationColour).Render("v" + c.Version)
+	if c.NewVersion != "" {
+		newVersion := lipgloss.NewStyle().
+			Foreground(tui.NotificationColour).
+			Render("v" + c.NewVersion)
+		version = fmt.Sprintf("v%s (new version available: %s)", c.Version, newVersion)
+	}
+
 	header := header.New(
-		"Bean "+c.Version,
+		"Bean "+version,
 		"A FrangipaneTeam bin",
 		width,
 		c,

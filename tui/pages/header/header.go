@@ -109,15 +109,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.examplesRecentActivity = true
 		m.activityFrom = msg
 		cmds = append(cmds, pages.WaitForExamplesActivity(m.notifyExamples), tick)
-
-		// case pages.ErrorMsg:
-		// 	m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
-		// 	m.errorRaised = true
-
-		// case tea.WindowSizeMsg:
-		// 	m.Title = fmt.Sprintf("%s - %d", "coucou", msg.Width)
-		// 	m.Width = msg.Width
-		// 	return m, nil
 	}
 	cmds = append(cmds, cmd)
 
