@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -149,8 +150,7 @@ func GenerateExamplesList(c config.Provider) tea.Msg {
 				}
 
 				// get only yaml files
-				if sf.Name()[len(sf.Name())-4:] != "yaml" &&
-					sf.Name()[len(sf.Name())-3:] != "yml" {
+				if filepath.Ext(sf.Name()) != ".yaml" && filepath.Ext(sf.Name()) != ".yml" {
 					continue
 				}
 
