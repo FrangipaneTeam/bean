@@ -98,7 +98,6 @@ func ListenForCRDActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 			}
 		}
 		<-done
-
 		return ch
 	}
 }
@@ -131,13 +130,10 @@ func ListenForExamplesActivity(ch chan NotifyActivity, c config.Provider) tea.Cm
 							Cause:  err,
 						}
 					}
-					if event.Op == fsnotify.Write || event.Op == fsnotify.Create ||
-						event.Op == fsnotify.Remove {
-						f := NotifyActivity{
-							FileName: event.Name,
-						}
-						ch <- f
+					f := NotifyActivity{
+						FileName: event.Name,
 					}
+					ch <- f
 				case err, ok := <-watcher.Errors:
 					if !ok {
 						return tools.ErrorMsg{
