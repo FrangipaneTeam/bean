@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+	"io/ioutil"
 	"regexp"
 	"sort"
 
@@ -207,6 +209,12 @@ func (e *ExamplesDetails) FindDependenciesSelectorFiles() {
 			for _, ex2 := range *e {
 				if ex2.Metadata.Labels.TestingUpboundIoExampleName == s {
 					ex.DependenciesFiles[ex2.FileName] = true
+					if haveExtraFile(ex2.FileName) {
+						ex.DependenciesFiles[fmt.Sprintf("%s.extra", ex2.FileName)] = true
+					}
+					if haveSecretFile(ex2.FileName) {
+						ex.DependenciesFiles[fmt.Sprintf("%s.secret", ex2.FileName)] = true
+					}
 				}
 			}
 		}
@@ -220,8 +228,26 @@ func (e *ExamplesDetails) FindDependenciesRefsFiles() {
 			for _, ex2 := range *e {
 				if ex2.Metadata.Name == s {
 					ex.DependenciesFiles[ex2.FileName] = true
+					if haveExtraFile(ex2.FileName) {
+						ex.DependenciesFiles[fmt.Sprintf("%s.extra", ex2.FileName)] = true
+					}
+					if haveSecretFile(ex2.FileName) {
+						ex.DependenciesFiles[fmt.Sprintf("%s.secret", ex2.FileName)] = true
+					}
 				}
 			}
 		}
 	}
+}
+
+func haveExtraFile(filename string) bool {
+	_, err := ioutil.ReadFile(fmt.Sprintf("%s.extra", filename))
+
+	return err == nil
+}
+
+func haveSecretFile(filename string) bool {
+	_, err := ioutil.ReadFile(fmt.Sprintf("%s.secret", filename))
+
+	return err == nil
 }
