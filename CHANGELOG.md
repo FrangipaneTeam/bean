@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.5](https://github.com/FrangipaneTeam/bean/compare/v0.0.4...v0.0.5) (2023-01-23)
+
+
+### Features
+
+* **ui:** add confirmation before delete ([#45](https://github.com/FrangipaneTeam/bean/issues/45)) ([be3c1a2](https://github.com/FrangipaneTeam/bean/commit/be3c1a25ea60572224bc46705661acb47189fb14))
+
+
+### Bug Fixes
+
+* **examples:** extension filter method ([#41](https://github.com/FrangipaneTeam/bean/issues/41)) ([3297c88](https://github.com/FrangipaneTeam/bean/commit/3297c88efdc0aa6f646fe232c4f60bb5780366bd))
+* **fsnotify:** missing channel receiver ([#39](https://github.com/FrangipaneTeam/bean/issues/39)) ([d673738](https://github.com/FrangipaneTeam/bean/commit/d67373844573cab428368902c4bf273eb47b5b31))
+* **k8s:** add extra and secret files from dependencies ([#44](https://github.com/FrangipaneTeam/bean/issues/44)) ([67901f6](https://github.com/FrangipaneTeam/bean/commit/67901f6a0d3093bdae86ab233a2fb9e4df008e89))
+* list-tested.md path ([c603452](https://github.com/FrangipaneTeam/bean/commit/c6034527ddba1776893d5b54f6aaadddc0bd4c44))
+* **ui:** bad title on get managed from root page ([3a8b7cf](https://github.com/FrangipaneTeam/bean/commit/3a8b7cfaabb5d400715ec3b614c359a69350c2c5))
+* **ui:** panic if latest check error ([b53d755](https://github.com/FrangipaneTeam/bean/commit/b53d755c2f49c52d8c68fc32dee3086c2d4b33a8))
+
 ## [0.0.4](https://github.com/FrangipaneTeam/bean/compare/v0.0.3...v0.0.4) (2023-01-20)
 
 
