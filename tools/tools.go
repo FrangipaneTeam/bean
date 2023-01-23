@@ -406,7 +406,7 @@ func GenerateListTested(c config.Provider) tea.Msg {
 
 		ProcessTemplate(
 			markdownTemplate,
-			"list-tested.md",
+			c.Path+"/list-tested.md",
 			data,
 		)
 
