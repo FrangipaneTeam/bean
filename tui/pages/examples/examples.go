@@ -376,6 +376,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.ShowDependanciesFiles):
 			m.showDependenciesFiles = !m.showDependenciesFiles
+			m.header.DependenciesStatus = m.showDependenciesFiles
 			cmd = m.currentList.NewStatusMessage(fmt.Sprintf("Show dependencies files →  %t", m.showDependenciesFiles))
 			return m, cmd
 
@@ -438,6 +439,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case k8s.Message:
 		question := "Delete all ressources ?"
+		if m.showDependenciesFiles {
+			question = "Delete all ressources WITH dependencies ?"
+		}
 		okValue := "No Fear !"
 		cancelValue := "I'm scared !"
 		m.dialogbox.SetDialogBox(question, okValue, cancelValue)
