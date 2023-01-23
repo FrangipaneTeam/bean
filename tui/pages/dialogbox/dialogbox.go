@@ -12,6 +12,11 @@ import (
 const (
 	questionSize = 50
 	dialogHeight = 9
+	marginRight  = 2
+)
+const (
+	okValue = 1 << iota
+	cancelValue
 )
 
 var (
@@ -57,7 +62,7 @@ func New(w int, h int, keymap *tui.ListKeyMap) Model {
 		width:        w,
 		height:       h,
 		keys:         keymap,
-		ActiveButton: 2,
+		ActiveButton: cancelValue,
 	}
 }
 
@@ -77,10 +82,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Left):
-			m.ActiveButton = 1
+			m.ActiveButton = okValue
 
 		case key.Matches(msg, m.keys.Right):
-			m.ActiveButton = 2
+			m.ActiveButton = cancelValue
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -90,13 +95,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 func (m Model) View() string {
 	var doc strings.Builder
 
-	okButton := activeButtonStyle.MarginRight(2).Render(m.okValue)
+	okButton := activeButtonStyle.MarginRight(marginRight).Render(m.okValue)
 	cancelButton := buttonStyle.Render(m.cancelValue)
 	// okButton := buttonStyle.MarginRight(2).Render(m.okValue)
 	// cancelButton := activeButtonStyle.Render(m.cancelValue)
 
-	if m.ActiveButton == 2 {
-		okButton = buttonStyle.MarginRight(2).Render(m.okValue)
+	if m.ActiveButton == cancelValue {
+		okButton = buttonStyle.MarginRight(marginRight).Render(m.okValue)
 		cancelButton = activeButtonStyle.Render(m.cancelValue)
 	}
 
@@ -136,4 +141,8 @@ func (m *Model) SetDialogBox(question string, okValue string, cancelValue string
 	m.question = question
 	m.okValue = okValue
 	m.cancelValue = cancelValue
+}
+
+func GetCancelValue() int {
+	return cancelValue
 }

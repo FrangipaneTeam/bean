@@ -14,7 +14,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Model is the model of the header
+const (
+	headerBlocks           = 2
+	descriptionPaddingLeft = 2
+)
+
+// Model is the model of the header.
 type Model struct {
 	tea.Model
 	Title                  string
@@ -35,7 +40,7 @@ type Model struct {
 	config config.Provider
 }
 
-// Init initializes the model
+// Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		pages.WaitForCrdActivity(m.notifyCrds),
@@ -47,7 +52,7 @@ func (m Model) Init() tea.Cmd {
 	)
 }
 
-// New creates a new header model
+// New creates a new header model.
 func New(title string, desc string, w int, c config.Provider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Points
@@ -67,7 +72,7 @@ func New(title string, desc string, w int, c config.Provider) Model {
 	}
 }
 
-// Update updates the model
+// Update updates the model.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -90,7 +95,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 	case spinner.TickMsg:
-		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 
@@ -115,24 +119,37 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// View renders the model
+// View renders the model.
 func (m Model) View() string {
 	nameVersion := lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		tui.TextStyle.Render(m.Title),
-		tui.FeintTextStyle.Padding(0, 0, 0, 2).Render(m.Description),
+		tui.FeintTextStyle.Padding(0, 0, 0, descriptionPaddingLeft).Render(m.Description),
 	)
 
 	header := ""
-	// nolint: gocritic // TODO: try to change the logic to avoid this
-	if !m.crdRecentActivity && !m.examplesRecentActivity {
+
+	switch {
+	case !m.crdRecentActivity && !m.examplesRecentActivity:
 		header = fmt.Sprintf("%s Watch for new crd/examples files", m.spinner.View())
-	} else if m.crdRecentActivity {
+	case m.crdRecentActivity:
 		c := lipgloss.NewStyle().Foreground(tui.SpinnerColour).Render("→")
-		header = fmt.Sprintf("%s New CRD files %s %s %ds ago", m.spinner.View(), c, "Updated", m.hideNotify)
-	} else if m.examplesRecentActivity {
+		header = fmt.Sprintf(
+			"%s New CRD files %s %s %ds ago",
+			m.spinner.View(),
+			c,
+			"Updated",
+			m.hideNotify,
+		)
+	case m.examplesRecentActivity:
 		c := lipgloss.NewStyle().Foreground(tui.SpinnerColour).Render("→")
-		header = fmt.Sprintf("%s New examples %s %s %ds ago", m.spinner.View(), c, "Updated", m.hideNotify)
+		header = fmt.Sprintf(
+			"%s New examples %s %s %ds ago",
+			m.spinner.View(),
+			c,
+			"Updated",
+			m.hideNotify,
+		)
 	}
 
 	notification := strings.Builder{}
@@ -159,9 +176,9 @@ func (m Model) View() string {
 
 	header = lipgloss.JoinHorizontal(
 		lipgloss.Bottom,
-		lipgloss.NewStyle().Width(m.width/2).Align(lipgloss.Left).Render(header),
+		lipgloss.NewStyle().Width(m.width/headerBlocks).Align(lipgloss.Left).Render(header),
 		lipgloss.NewStyle().
-			Width(m.width/2).
+			Width(m.width/headerBlocks).
 			Align(lipgloss.Right).
 			Render(dependenciesStatus.String()+notification.String()),
 	)
@@ -170,7 +187,7 @@ func (m Model) View() string {
 		lipgloss.Center,
 		lipgloss.NewStyle().
 			MarginBottom(1).
-			Width(m.width/2).
+			Width(m.width/headerBlocks).
 			Align(lipgloss.Center).
 			Render(nameVersion),
 		header,
@@ -189,17 +206,17 @@ func tick() tea.Msg {
 	return tickMsg{}
 }
 
-// Height return the height of the view
+// Height return the height of the view.
 func (m Model) Height() int {
 	return lipgloss.Height(m.View())
 }
 
-// Width return the width of the view
+// Width return the width of the view.
 func (m Model) Width() int {
 	return lipgloss.Width(m.View())
 }
 
-// SetWidth set the width of the view
+// SetWidth set the width of the view.
 func (m *Model) SetWidth(w int) {
 	m.width = w
 }

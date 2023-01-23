@@ -12,7 +12,6 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/tcnksm/go-latest v0.0.0-20170313132115-e3007ae9052e
 	golang.org/x/exp v0.0.0-20230116083435-1de6713980de
-	golang.org/x/term v0.4.0
 	gopkg.in/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -47,5 +46,6 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 )

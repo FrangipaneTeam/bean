@@ -2,7 +2,7 @@ package tui
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"sort"
 
@@ -11,19 +11,17 @@ import (
 )
 
 var (
-	reRefs, _     = regexp.Compile(`^\w+Refs$`)
-	reSelector, _ = regexp.Compile(`^\w+Selector$`)
+	reRefs     = regexp.MustCompile(`^\w+Refs$`)
+	reSelector = regexp.MustCompile(`^\w+Selector$`)
 )
 
-// Example is a struct that holds the details of an example
+// Example is a struct that holds the details of an example.
 type Example struct {
 	FileName        string
 	ExampleID       string
 	Desc            string
 	ExtraFileExist  bool
-	ExtraFile       string
 	SecretFileExist bool
-	SecretFile      string
 	Selectors       map[string]bool
 	Refs            map[string]bool
 
@@ -45,39 +43,39 @@ type Example struct {
 	} `yaml:"spec"`
 }
 
-// LoadedExamples is a struct that holds the loaded examples
+// LoadedExamples is a struct that holds the loaded examples.
 type LoadedExamples struct {
 	Examples map[string][]list.Item
 }
 
-// ListTestedDone is a struct that holds the done message
+// ListTestedDone is a struct that holds the done message.
 type ListTestedDone struct{}
 
-// ExamplesDetails is a map of Example
+// ExamplesDetails is a map of Example.
 type ExamplesDetails map[string]*Example
 
-// Title returns the title of the example
+// Title returns the title of the example.
 func (e Example) Title() string { return e.FileName }
 
-// Description returns the description of the example
+// Description returns the description of the example.
 func (e Example) Description() string { return e.Desc }
 
-// FilterValue returns the value to filter on
+// FilterValue returns the value to filter on.
 func (e Example) FilterValue() string { return e.FileName }
 
-// HaveExtraFile returns true if the example has an extra file
+// HaveExtraFile returns true if the example has an extra file.
 func (e Example) HaveExtraFile() bool { return e.ExtraFileExist }
 
-// HaveSecretFile returns true if the example has a secret file
+// HaveSecretFile returns true if the example has a secret file.
 func (e Example) HaveSecretFile() bool { return e.SecretFileExist }
 
-// HaveDependenciesFiles returns true if the example has dependencies files
+// HaveDependenciesFiles returns true if the example has dependencies files.
 func (e Example) HaveDependenciesFiles() bool { return len(e.DependenciesFiles) > 0 }
 
-// GetExampleID returns the example ID
+// GetExampleID returns the example ID.
 func (e Example) GetExampleID() string { return e.ExampleID }
 
-// DependenciesFilesList returns a list of dependencies files
+// DependenciesFilesList returns a list of dependencies files.
 func (e Example) DependenciesFilesList() []string {
 	list := []string{}
 	for k := range e.DependenciesFiles {
@@ -88,21 +86,22 @@ func (e Example) DependenciesFilesList() []string {
 	return list
 }
 
-// FindSelectorsAndRefs returns the selectors and refs of the example
+// FindSelectorsAndRefs returns the selectors and refs of the example.
 func (e *Example) FindSelectorsAndRefs() (map[string]bool, map[string]bool) {
 	mapsSelector := make(map[string]bool)
 	mapsRefs := make(map[string]bool)
 
 	for k, v := range e.Spec.ForProvider {
-		if reSelector.MatchString(k) {
-			if _, ok := v.(map[string]interface{}); ok {
+		switch {
+		case reSelector.MatchString(k):
+			if _, isMap := v.(map[string]interface{}); isMap {
 				m := getSelector(v.(map[string]interface{}))
 				maps.Copy(mapsSelector, m)
 			}
-		} else if reRefs.MatchString(k) {
+		case reRefs.MatchString(k):
 			for _, v2 := range v.([]interface{}) {
-				m, ok := v2.(map[string]interface{})
-				if !ok {
+				m, isMap := v2.(map[string]interface{})
+				if !isMap {
 					continue
 				}
 
@@ -110,8 +109,8 @@ func (e *Example) FindSelectorsAndRefs() (map[string]bool, map[string]bool) {
 					mapsRefs[name] = true
 				}
 			}
-		} else {
-			if _, ok := v.([]interface{}); ok {
+		default:
+			if _, isArray := v.([]interface{}); isArray {
 				isArrayInterface(v.([]interface{}), mapsSelector, mapsRefs)
 			}
 		}
@@ -122,28 +121,37 @@ func (e *Example) FindSelectorsAndRefs() (map[string]bool, map[string]bool) {
 
 func isArrayInterface(i []interface{}, mapsSelector map[string]bool, mapsRefs map[string]bool) {
 	for _, a := range i {
-		if _, ok := a.(map[string]interface{}); ok {
-			for k, v := range a.(map[string]interface{}) {
-				if reSelector.MatchString(k) {
-					if _, ok := v.(map[string]interface{}); ok {
-						m := getSelector(v.(map[string]interface{}))
-						maps.Copy(mapsSelector, m)
-					}
-				} else if reRefs.MatchString(k) {
-					for _, v2 := range v.([]interface{}) {
-						m, ok := v2.(map[string]interface{})
-						if !ok {
-							continue
-						}
+		if _, ok := a.(map[string]interface{}); !ok {
+			continue
+		}
 
-						if name, ok := m["name"].(string); ok {
-							mapsRefs[name] = true
-						}
+		m, isMapI := a.(map[string]interface{})
+
+		if !isMapI {
+			continue
+		}
+
+		for k, v := range m {
+			switch {
+			case reSelector.MatchString(k):
+				if _, isMap := v.(map[string]interface{}); isMap {
+					selector := getSelector(v.(map[string]interface{}))
+					maps.Copy(mapsSelector, selector)
+				}
+			case reRefs.MatchString(k):
+				for _, v2 := range v.([]interface{}) {
+					ref, isMap := v2.(map[string]interface{})
+					if !isMap {
+						continue
 					}
-				} else {
-					if _, ok := v.([]interface{}); ok {
-						isArrayInterface(v.([]interface{}), mapsSelector, mapsRefs)
+
+					if name, ok := ref["name"].(string); ok {
+						mapsRefs[name] = true
 					}
+				}
+			default:
+				if _, isArray := v.([]interface{}); isArray {
+					isArrayInterface(v.([]interface{}), mapsSelector, mapsRefs)
 				}
 			}
 		}
@@ -155,10 +163,13 @@ func getSelector(v map[string]interface{}) map[string]bool {
 	if _, ok := v["matchLabels"].(map[string]interface{}); !ok {
 		return nil
 	}
-	matchLabels := v["matchLabels"].(map[string]interface{})
+	matchLabels, isMap := v["matchLabels"].(map[string]interface{})
+	if !isMap {
+		return nil
+	}
 	exampleName := matchLabels["testing.upbound.io/example-name"]
 	if exampleName != nil {
-		if _, ok := exampleName.(string); ok {
+		if _, isString := exampleName.(string); isString {
 			m[exampleName.(string)] = true
 		} else {
 			return nil
@@ -167,7 +178,7 @@ func getSelector(v map[string]interface{}) map[string]bool {
 	return m
 }
 
-// FindDependencies Find Selector and Ref in all files examples
+// FindDependencies Find Selector and Ref in all files examples.
 func (e *ExamplesDetails) FindDependencies() {
 	e.FindDependenciesSelector()
 	e.FindDependenciesRefs()
@@ -176,7 +187,7 @@ func (e *ExamplesDetails) FindDependencies() {
 	e.FindDependenciesRefsFiles()
 }
 
-// FindDependenciesRefs Find Refs in all dependencies files examples
+// FindDependenciesRefs Find Refs in all dependencies files examples.
 func (e *ExamplesDetails) FindDependenciesRefs() {
 	for _, ex := range *e {
 		for s := range ex.Refs {
@@ -189,7 +200,7 @@ func (e *ExamplesDetails) FindDependenciesRefs() {
 	}
 }
 
-// FindDependenciesSelector Find Selectors in all dependencies files examples
+// FindDependenciesSelector Find Selectors in all dependencies files examples.
 func (e *ExamplesDetails) FindDependenciesSelector() {
 	for _, ex := range *e {
 		for s := range ex.Selectors {
@@ -202,7 +213,7 @@ func (e *ExamplesDetails) FindDependenciesSelector() {
 	}
 }
 
-// FindDependenciesSelectorFiles Find Selector in all files examples
+// FindDependenciesSelectorFiles Find Selector in all files examples.
 func (e *ExamplesDetails) FindDependenciesSelectorFiles() {
 	for _, ex := range *e {
 		for s := range ex.Selectors {
@@ -221,7 +232,7 @@ func (e *ExamplesDetails) FindDependenciesSelectorFiles() {
 	}
 }
 
-// FindDependenciesRefsFiles Find Refs in all files examples
+// FindDependenciesRefsFiles Find Refs in all files examples.
 func (e *ExamplesDetails) FindDependenciesRefsFiles() {
 	for _, ex := range *e {
 		for s := range ex.Refs {
@@ -241,13 +252,13 @@ func (e *ExamplesDetails) FindDependenciesRefsFiles() {
 }
 
 func haveExtraFile(filename string) bool {
-	_, err := ioutil.ReadFile(fmt.Sprintf("%s.extra", filename))
+	_, err := os.ReadFile(fmt.Sprintf("%s.extra", filename))
 
 	return err == nil
 }
 
 func haveSecretFile(filename string) bool {
-	_, err := ioutil.ReadFile(fmt.Sprintf("%s.secret", filename))
+	_, err := os.ReadFile(fmt.Sprintf("%s.secret", filename))
 
 	return err == nil
 }
