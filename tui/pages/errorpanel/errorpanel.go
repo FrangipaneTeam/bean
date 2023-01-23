@@ -86,10 +86,17 @@ func (m Model) View() string {
 	panel := lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.NewStyle().Render(wordwrap.String(reason, m.width)),
-		lipgloss.NewStyle().Margin(0, 0, 2, 0).Render(desc),
+		lipgloss.NewStyle().Margin(0, 0, 0, 0).Render(desc),
 	)
 
-	b.WriteString(panel)
+	panelWithBorder := lipgloss.NewStyle().
+		Height(m.height - 2).
+		Width(m.width - 2).
+		MaxHeight(m.height).
+		Border(lipgloss.HiddenBorder()).
+		Render(panel)
+
+	b.WriteString(panelWithBorder)
 	return b.String()
 }
 
@@ -104,10 +111,9 @@ func (m Model) RaiseError(reason string, cause error) Model {
 }
 
 // Resize resizes the model
-func (m Model) Resize(width, height int) Model {
+func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	return m
 }
 
 // Width returns the width of the model

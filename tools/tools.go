@@ -17,6 +17,7 @@ import (
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/pkg/crd"
 	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -47,17 +48,20 @@ type ErrorMsg struct {
 }
 
 // Kubectl runs a kubectl command
-func Kubectl(verb string, file string, cmdID string) tea.Cmd {
+func Kubectl(k8sCmd *k8s.Cmd) tea.Cmd {
 	return func() tea.Msg {
-		if verb == "" || file == "" {
+		if k8sCmd.Verb == "" || len(k8sCmd.Files) == 0 {
 			return nil
 		}
 
 		var args []string
-		if verb == "managed" {
+		switch k8sCmd.Verb {
+		case "managed":
 			args = []string{"get", "managed"}
-		} else {
-			args = []string{verb, "-f", file}
+		case "apply":
+			args = []string{k8sCmd.Verb, "-f", k8sCmd.JoinedFiles()}
+		case "delete":
+			args = []string{k8sCmd.Verb, "--wait=false", "-f", k8sCmd.JoinedFiles()}
 		}
 
 		cmd := exec.Command("kubectl", args...)
@@ -69,15 +73,12 @@ func Kubectl(verb string, file string, cmdID string) tea.Cmd {
 			return ErrorMsg{
 				Reason: fmt.Sprintf("command kubectl %s failed", strings.Join(args, " ")),
 				Cause:  errors.New(stderr.String()),
-				CmdID:  cmdID,
+				CmdID:  k8sCmd.ID,
 			}
 		}
 
-		return KubectlResult{
-			Out:   stdout.String(),
-			Verb:  verb,
-			CmdID: cmdID,
-		}
+		k8sCmd.Result = stdout.String()
+		return k8sCmd
 	}
 }
 

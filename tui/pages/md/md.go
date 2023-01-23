@@ -2,7 +2,6 @@
 package md
 
 import (
-	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -24,9 +23,8 @@ func (m Model) Init() tea.Cmd {
 func New(w, h int) Model {
 	vp := viewport.New(w, h)
 	vp.Style = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(tui.BorderColour)
-	// PaddingRight(2)
+		Width(w).
+		PaddingRight(2)
 	return Model{
 		Width:    w,
 		Height:   h,
@@ -43,4 +41,16 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 // View renders the model
 func (m Model) View() string {
 	return ""
+}
+
+// SetSize sets the size of the model
+func (m *Model) SetSize(w, h int) {
+	m.Width = w
+	m.Height = h
+	m.Viewport.Height = h
+	m.Viewport.Width = w
+	m.Viewport.Style = lipgloss.NewStyle().
+		Width(w).
+		PaddingRight(2)
+	viewport.Sync(m.Viewport)
 }

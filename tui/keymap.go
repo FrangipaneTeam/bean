@@ -18,6 +18,8 @@ type ListKeyMap struct {
 	Quit                  key.Binding
 	UpDown                key.Binding
 	LeftRight             key.Binding
+	Left                  key.Binding
+	Right                 key.Binding
 	Apply                 key.Binding
 	Delete                key.Binding
 	Print                 key.Binding
@@ -90,6 +92,14 @@ func NewListKeyMap() *ListKeyMap {
 			key.WithKeys("T"),
 			key.WithHelp("T", "generate list tested"),
 		),
+		Left: key.NewBinding(
+			key.WithKeys("left"),
+			key.WithHelp("←", "left"),
+		),
+		Right: key.NewBinding(
+			key.WithKeys("right"),
+			key.WithHelp("→", "right"),
+		),
 		VpKM:       viewport.DefaultKeyMap(),
 		ListKeyMap: list.DefaultKeyMap(),
 	}
@@ -144,6 +154,9 @@ func (m *ListKeyMap) EnableViewPortKeys() {
 	m.LeftRight.SetEnabled(false)
 	m.Back.SetEnabled(true)
 	m.ListKeyMap.Filter.SetEnabled(false)
+	m.ShowRessources.SetEnabled(false)
+	m.ShowTested.SetEnabled(false)
+	m.GenerateListTested.SetEnabled(false)
 }
 
 func (m *ListKeyMap) disableViewPortKeys() {
@@ -184,6 +197,8 @@ func (m *ListKeyMap) EnableRootKeys() {
 	m.Select.SetEnabled(true)
 	m.Get.SetEnabled(true)
 	m.Help.SetEnabled(true)
+	m.UpDown.SetEnabled(true)
+	m.LeftRight.SetEnabled(true)
 	m.ListKeyMap.Filter.SetEnabled(true)
 	m.ShowRessources.SetEnabled(true)
 	m.ShowTested.SetEnabled(true)
@@ -192,6 +207,7 @@ func (m *ListKeyMap) EnableRootKeys() {
 
 // EnableKindListKeys is the set of keys for the kind list
 func (m *ListKeyMap) EnableKindListKeys() {
+	m.disableViewPortKeys()
 	m.enableK8SKeys()
 	m.Help.SetEnabled(true)
 	m.ListKeyMap.Filter.SetEnabled(true)
@@ -212,4 +228,15 @@ func (m *ListKeyMap) EnablePrintK8SKeys() {
 	m.ListKeyMap.Filter.SetEnabled(false)
 	m.UpDown.SetEnabled(false)
 	m.LeftRight.SetEnabled(false)
+}
+
+// EnableDialogBoxKeys is the set of keys for the dialog box
+func (m *ListKeyMap) EnableDialogBoxKeys() {
+	m.disableK8SKeys()
+	m.disableViewPortKeys()
+	m.Back.SetEnabled(false)
+	m.ListKeyMap.Filter.SetEnabled(false)
+	m.LeftRight.SetEnabled(true)
+	m.Help.SetEnabled(false)
+	m.Select.SetEnabled(true)
 }

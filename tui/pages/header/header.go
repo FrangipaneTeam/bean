@@ -26,6 +26,7 @@ type Model struct {
 	activityFrom           interface{}
 	notifyCrds             chan pages.NotifyActivity
 	notifyExamples         chan pages.NotifyActivity
+	DependenciesStatus     bool
 	width                  int
 	Notification           string
 	NotificationOK         string
@@ -53,15 +54,16 @@ func New(title string, desc string, w int, c config.Provider) Model {
 	s.Style = lipgloss.NewStyle().Foreground(tui.SpinnerColour)
 
 	return Model{
-		Title:          title,
-		Description:    desc,
-		Notification:   "ready",
-		NotificationOK: tui.RunningMark,
-		spinner:        s,
-		notifyCrds:     make(chan pages.NotifyActivity),
-		notifyExamples: make(chan pages.NotifyActivity),
-		width:          w,
-		config:         c,
+		Title:              title,
+		Description:        desc,
+		Notification:       "ready",
+		NotificationOK:     tui.RunningMark,
+		spinner:            s,
+		notifyCrds:         make(chan pages.NotifyActivity),
+		notifyExamples:     make(chan pages.NotifyActivity),
+		width:              w,
+		config:             c,
+		DependenciesStatus: true,
 	}
 }
 
@@ -134,31 +136,48 @@ func (m Model) View() string {
 	}
 
 	notification := strings.Builder{}
+	dependenciesStatus := strings.Builder{}
 
 	t := strings.Trim(m.Notification, "\n")
-	fmt.Fprintf(&notification, "%s %s %s", tui.Divider, t, m.NotificationOK)
-	wP := m.width - tui.AppStyle.GetHorizontalPadding()
+	fmt.Fprintf(
+		&notification,
+		"%s %s %s",
+		tui.Divider,
+		t,
+		m.NotificationOK,
+	)
+
+	fmt.Fprintf(&dependenciesStatus, "")
+	if m.DependenciesStatus {
+		fmt.Fprintf(
+			&dependenciesStatus,
+			"%s dependencies %s",
+			tui.Divider,
+			lipgloss.NewStyle().Foreground(tui.NotificationColour).Render("⚠"),
+		)
+	}
 
 	header = lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		lipgloss.NewStyle().Width(wP/2).Align(lipgloss.Left).Render(header),
-		tui.NotificationStyle.
-			Width(wP/2).
+		lipgloss.Bottom,
+		lipgloss.NewStyle().Width(m.width/2).Align(lipgloss.Left).Render(header),
+		lipgloss.NewStyle().
+			Width(m.width/2).
 			Align(lipgloss.Right).
-			Render(notification.String()),
+			Render(dependenciesStatus.String()+notification.String()),
 	)
 
 	banner := lipgloss.JoinVertical(
 		lipgloss.Center,
 		lipgloss.NewStyle().
 			MarginBottom(1).
-			Width(wP).
+			Width(m.width/2).
 			Align(lipgloss.Center).
 			Render(nameVersion),
 		header,
+		tui.BorderBottom.Width(m.width).MarginBottom(1).String(),
 		// tui.BorderBottom.Width(wP).String(),
 	)
-	banner += "\n" + tui.BorderBottom.Width(wP).String()
+	// banner += "\n" + tui.BorderBottom.Width(m.width).String()
 
 	return banner
 }

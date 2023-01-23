@@ -80,7 +80,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		top, right, bottom, left := tui.AppStyle.GetMargin()
 		m.width, m.height = msg.Width-left-right, msg.Height-top-bottom
 
-		m.errorPanel = m.errorPanel.Resize(m.width, m.height)
+		m.errorPanel.SetSize(m.width, m.height)
 		return m, nil
 	}
 	m.spinner, cmd = m.spinner.Update(msg)
