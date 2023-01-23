@@ -7,24 +7,28 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Model is the model of the markdown viewer
+const (
+	paddingRight = 2
+)
+
+// Model is the model of the markdown viewer.
 type Model struct {
 	tea.Model
 	Width, Height int
 	Viewport      viewport.Model
 }
 
-// Init initializes the model
+// Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// New creates a new markdown viewer model
+// New creates a new markdown viewer model.
 func New(w, h int) Model {
 	vp := viewport.New(w, h)
 	vp.Style = lipgloss.NewStyle().
 		Width(w).
-		PaddingRight(2)
+		PaddingRight(paddingRight)
 	return Model{
 		Width:    w,
 		Height:   h,
@@ -32,18 +36,17 @@ func New(w, h int) Model {
 	}
 }
 
-// Update updates the model
+// Update updates the model.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-
 	return m, nil
 }
 
-// View renders the model
+// View renders the model.
 func (m Model) View() string {
 	return ""
 }
 
-// SetSize sets the size of the model
+// SetSize sets the size of the model.
 func (m *Model) SetSize(w, h int) {
 	m.Width = w
 	m.Height = h
@@ -51,6 +54,6 @@ func (m *Model) SetSize(w, h int) {
 	m.Viewport.Width = w
 	m.Viewport.Style = lipgloss.NewStyle().
 		Width(w).
-		PaddingRight(2)
+		PaddingRight(paddingRight)
 	viewport.Sync(m.Viewport)
 }

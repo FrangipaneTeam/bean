@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -24,7 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// KubectlResult is the result of a kubectl command
+// KubectlResult is the result of a kubectl command.
 type KubectlResult struct {
 	Verb  string
 	Out   string
@@ -33,12 +32,12 @@ type KubectlResult struct {
 	Item  *tui.Example
 }
 
-// Markdown is a struct that holds the content of a markdown file
+// Markdown is a struct that holds the content of a markdown file.
 type Markdown struct {
 	Content string
 }
 
-// ErrorMsg should be sent to notify a user of an unrecoverable error
+// ErrorMsg should be sent to notify a user of an unrecoverable error.
 type ErrorMsg struct {
 	Reason string
 	Cause  error
@@ -47,7 +46,7 @@ type ErrorMsg struct {
 	Item   *tui.Example
 }
 
-// Kubectl runs a kubectl command
+// Kubectl runs a kubectl command.
 func Kubectl(k8sCmd *k8s.Cmd) tea.Cmd {
 	return func() tea.Msg {
 		if k8sCmd.Verb == "" || len(k8sCmd.Files) == 0 {
@@ -82,10 +81,10 @@ func Kubectl(k8sCmd *k8s.Cmd) tea.Cmd {
 	}
 }
 
-// RenderMarkdown renders a markdown file
+// RenderMarkdown renders a markdown file.
 func RenderMarkdown(file string, wrap int) tea.Cmd {
 	return func() tea.Msg {
-		f, err := ioutil.ReadFile(file)
+		f, err := os.ReadFile(file)
 		if err != nil {
 			return ErrorMsg{
 				Reason: "could not read markdown file",
@@ -114,14 +113,159 @@ func RenderMarkdown(file string, wrap int) tea.Cmd {
 		return Markdown{
 			Content: str,
 		}
-
 	}
 }
 
-// GenerateExamplesList generates the list of examples
-// nolint:gocyclo // TODO need to refactor this function
+func listDirExamples(path string) ([]os.DirEntry, error) {
+	examplesList, err := os.ReadDir(fmt.Sprintf("%s/examples", path))
+	return examplesList, err
+}
+
+func createExampleList(dir string) ([]*tui.Example, *ErrorMsg) {
+	kindList, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, &ErrorMsg{
+			Reason: "could not read examples directory",
+			Cause:  err,
+		}
+	}
+
+	exampleList := make([]*tui.Example, 0)
+
+	// for the sub list of examples dir
+	for _, sf := range kindList {
+		if !sf.Type().IsRegular() {
+			continue
+		}
+
+		// get only yaml files
+		if isYaml := IsYamlFile(sf.Name()); !isYaml {
+			continue
+		}
+
+		// open and parse yaml file
+		yfile, errReadFile := os.ReadFile(
+			fmt.Sprintf("%s/%s", dir, sf.Name()),
+		)
+		if errReadFile != nil {
+			return nil, &ErrorMsg{
+				Reason: "could not read examples directory",
+				Cause:  errReadFile,
+			}
+		}
+		var k *tui.Example
+		err = yaml.Unmarshal(yfile, &k)
+		if err != nil {
+			return nil, &ErrorMsg{
+				Reason: "unmarshal error",
+				Cause:  err,
+			}
+		}
+
+		// continue if unmarshal empty yaml
+		if k == nil {
+			continue
+		}
+
+		k.FileName = dir + "/" + sf.Name()
+		k.Desc = k.Kind + " → " + k.APIVersion
+		k.ExampleID = strings.ToLower(fmt.Sprintf("%s.%s", k.Kind, k.APIVersion))
+
+		// check for selector
+		k.Selectors, k.Refs = k.FindSelectorsAndRefs()
+		k.DependenciesFiles = map[string]bool{}
+
+		// check for extra files
+		extraFileCount, errCheckExtra := checkForExtraFile(dir, sf.Name())
+		if errCheckExtra != nil {
+			return nil, errCheckExtra
+		}
+		if extraFileCount > 0 {
+			k.ExtraFileExist = true
+			k.Desc = fmt.Sprintf("%s + %d extra", k.Desc, extraFileCount)
+		}
+
+		// check for secret file
+		extraSecretCount, errCheckSecret := checkForSecretFile(dir, sf.Name())
+		if errCheckSecret != nil {
+			return nil, errCheckSecret
+		}
+		if extraSecretCount > 0 {
+			k.SecretFileExist = true
+			k.Desc = fmt.Sprintf("%s + %d secret", k.Desc, extraSecretCount)
+		}
+
+		exampleList = append(exampleList, k)
+	}
+	return exampleList, nil
+}
+
+func checkForExtraFile(dir string, file string) (int, *ErrorMsg) {
+	var (
+		extraK8S  *tui.Example
+		extraKind int
+	)
+
+	extraYFile, err := os.ReadFile(
+		fmt.Sprintf("%s/%s.extra", dir, file),
+	)
+	if err == nil {
+		extraY, errSplitYaml := splitYAML(extraYFile)
+		if errSplitYaml != nil {
+			return extraKind, &ErrorMsg{
+				Reason: "split yaml error",
+				Cause:  errSplitYaml,
+			}
+		}
+		for _, f := range extraY {
+			err = yaml.Unmarshal(f, &extraK8S)
+			if err != nil {
+				return extraKind, &ErrorMsg{
+					Reason: "unmarshal error",
+					Cause:  err,
+				}
+			}
+			extraKind++
+		}
+	}
+	return extraKind, nil
+}
+
+func checkForSecretFile(dir string, file string) (int, *ErrorMsg) {
+	var (
+		extraK8S  *tui.Example
+		extraKind int
+	)
+
+	extraSFile, err := os.ReadFile(
+		fmt.Sprintf("%s/%s.secret", dir, file),
+	)
+	if err == nil {
+		extraY, errSplitYaml := splitYAML(extraSFile)
+		if errSplitYaml != nil {
+			return extraKind, &ErrorMsg{
+				Reason: "split yaml error",
+				Cause:  errSplitYaml,
+			}
+		}
+
+		for _, f := range extraY {
+			err = yaml.Unmarshal(f, &extraK8S)
+			if err != nil {
+				return extraKind, &ErrorMsg{
+					Reason: "unmarshal error",
+					Cause:  err,
+				}
+			}
+			extraKind++
+		}
+	}
+	return extraKind, nil
+}
+
+// GenerateExamplesList generates the list of examples.
 func GenerateExamplesList(c config.Provider) tea.Msg {
-	examplesList, err := ioutil.ReadDir(fmt.Sprintf("%s/examples", c.Path))
+	examplesList, err := listDirExamples(c.Path)
 	if err != nil {
 		return ErrorMsg{
 			Reason: "could not read examples directory",
@@ -130,145 +274,44 @@ func GenerateExamplesList(c config.Provider) tea.Msg {
 	}
 	var s tui.LoadedExamples
 	s.Examples = make(map[string][]list.Item)
-	for _, exL := range examplesList {
-		if exL.IsDir() {
-			kindList, err := ioutil.ReadDir(fmt.Sprintf("%s/examples/%s", c.Path, exL.Name()))
-			if err != nil {
-				return ErrorMsg{
-					Reason: "could not read examples directory",
-					Cause:  err,
-				}
-			}
-			// for the root list of examples dir
-			e := &tui.Example{
-				FileName: exL.Name(),
-			}
+	rootExamples := []list.Item{}
 
-			// for the sub list of examples dir
-			for _, sf := range kindList {
-				if !sf.Mode().IsRegular() {
-					continue
-				}
-
-				// get only yaml files
-				if filepath.Ext(sf.Name()) != ".yaml" && filepath.Ext(sf.Name()) != ".yml" {
-					continue
-				}
-
-				// open and parse yaml file
-				yfile, err := ioutil.ReadFile(
-					fmt.Sprintf("%s/examples/%s/%s", c.Path, exL.Name(), sf.Name()),
-				)
-				if err != nil {
-					return ErrorMsg{
-						Reason: "could not read examples directory",
-						Cause:  err,
-					}
-				}
-				var k *tui.Example
-				err = yaml.Unmarshal(yfile, &k)
-				if err != nil {
-					return ErrorMsg{
-						Reason: "unmarshal error",
-						Cause:  err,
-					}
-				}
-
-				// continue if unmarshal empty yaml
-				if k == nil {
-					continue
-				}
-
-				k.FileName = c.Path + "/examples/" + exL.Name() + "/" + sf.Name()
-				k.Desc = k.Kind + " → " + k.APIVersion
-				k.ExampleID = strings.ToLower(fmt.Sprintf("%s.%s", k.Kind, k.APIVersion))
-
-				// check for selector
-				k.Selectors, k.Refs = k.FindSelectorsAndRefs()
-				k.DependenciesFiles = map[string]bool{}
-
-				// check for extra file examples
-				var extraK8S *tui.Example
-				extraYFile, err := ioutil.ReadFile(
-					fmt.Sprintf("%s/examples/%s/%s.extra", c.Path, exL.Name(), sf.Name()),
-				)
-				if err == nil {
-					extraY, err := splitYAML(extraYFile)
-					if err != nil {
-						return ErrorMsg{
-							Reason: "split yaml error",
-							Cause:  err,
-						}
-					}
-					extraKind := 0
-					for _, f := range extraY {
-						err = yaml.Unmarshal(f, &extraK8S)
-						if err != nil {
-							return ErrorMsg{
-								Reason: "unmarshal error",
-								Cause:  err,
-							}
-						}
-						extraKind++
-					}
-					k.ExtraFileExist = true
-					k.Desc = fmt.Sprintf("%s + %d extra", k.Desc, extraKind)
-				}
-
-				// check for secret file
-				extraSFile, err := ioutil.ReadFile(
-					fmt.Sprintf("%s/examples/%s/%s.secret", c.Path, exL.Name(), sf.Name()),
-				)
-				if err == nil {
-					extraY, err := splitYAML(extraSFile)
-					if err != nil {
-						return ErrorMsg{
-							Reason: "split yaml error",
-							Cause:  err,
-						}
-					}
-					extraKind := 0
-					for _, f := range extraY {
-						err = yaml.Unmarshal(f, &extraK8S)
-						if err != nil {
-							return ErrorMsg{
-								Reason: "unmarshal error",
-								Cause:  err,
-							}
-						}
-						extraKind++
-					}
-
-					k.SecretFileExist = true
-					k.SecretFile = fmt.Sprintf(
-						"%s/examples/%s/%s.secret",
-						c.Path,
-						exL.Name(),
-						sf.Name(),
-					)
-					k.Desc = fmt.Sprintf("%s + %d secret", k.Desc, extraKind)
-				}
-
-				s.Examples[exL.Name()] = append(s.Examples[exL.Name()], k)
-			}
-			if _, ok := s.Examples[exL.Name()]; ok {
-				s.Examples["-"] = append(s.Examples["-"], e)
-				e.Desc = fmt.Sprintf("%d examples", len(s.Examples[exL.Name()]))
-			}
+	for _, dir := range examplesList {
+		if !dir.IsDir() {
+			continue
 		}
+		// Generate file dependencies
+		dirName := dir.Name()
+
+		items, errMsg := createExampleList(c.Path + "/examples/" + dirName)
+		if errMsg != nil {
+			return errMsg
+		}
+
+		for _, item := range items {
+			s.Examples[dirName] = append(s.Examples[dirName], item)
+		}
+
+		e := &tui.Example{
+			FileName: dirName,
+			Desc:     fmt.Sprintf("%d examples", len(s.Examples[dirName])),
+		}
+		rootExamples = append(rootExamples, e)
 	}
 
-	// Generate file dependencies
+	s.Examples["-"] = rootExamples
+
 	examplesWithDependencies := tui.ExamplesDetails{}
 	for d, e := range s.Examples {
 		if d == "-" {
 			continue
 		}
 		for _, ex := range e {
-			example := ex.(*tui.Example)
-			examplesWithDependencies[example.ExampleID] = example
+			example, ok := ex.(*tui.Example)
+			if ok {
+				examplesWithDependencies[example.ExampleID] = example
+			}
 		}
-
 	}
 	examplesWithDependencies.FindDependencies()
 	return s
@@ -296,8 +339,8 @@ func splitYAML(resources []byte) ([][]byte, error) {
 	return res, nil
 }
 
-// ProcessTemplate processes a template file and writes the output to a file
-func ProcessTemplate(rawTemplate string, outputFile string, data interface{}) {
+// processTemplate processes a template file and writes the output to a file.
+func processTemplate(rawTemplate string, outputFile string, data interface{}) {
 	var err error
 
 	// Read the template file
@@ -316,9 +359,9 @@ func ProcessTemplate(rawTemplate string, outputFile string, data interface{}) {
 	// Execute the template
 	err = t.ExecuteTemplate(file, "listTested", data)
 	if err != nil {
-		log.Fatal(err)
+		//TODO: handle error in app
+		log.Print(err)
 	}
-
 }
 
 type testedStruct struct {
@@ -328,12 +371,12 @@ type testedStruct struct {
 
 type listTestedStruct map[string]map[string]testedStruct
 
-// Init initializes the list
+// Init initializes the list.
 func (l *listTestedStruct) Init() {
 	*l = make(map[string]map[string]testedStruct)
 }
 
-// Add adds a CRD to the list
+// Add adds a CRD to the list.
 func (l *listTestedStruct) Add(c crd.CRD) {
 	// if Group or Kind is empty, skip
 	if c.Spec.Group == "" || c.Spec.Names.Kind == "" {
@@ -348,12 +391,11 @@ func (l *listTestedStruct) Add(c crd.CRD) {
 		CRD:    c,
 		Tested: false,
 	}
-
 }
 
-// CheckIfTested checks if the resource is tested
+// CheckIfTested checks if the resource is tested.
 func (l *listTestedStruct) CheckIfTested(group, kind string) {
-	if _, ok := (*l)[group]; ok {
+	if _, isMap := (*l)[group]; isMap {
 		if entry, ok := (*l)[group][kind]; ok {
 			entry.Tested = true
 			(*l)[group][kind] = entry
@@ -361,7 +403,7 @@ func (l *listTestedStruct) CheckIfTested(group, kind string) {
 	}
 }
 
-// GenerateListTested generates the list of tested CRDs
+// GenerateListTested generates the list of tested CRDs.
 func GenerateListTested(c config.Provider) tea.Msg {
 	crdS, err := crd.GetCRDs(c.Path + "/package/crds")
 	if err != nil {
@@ -370,7 +412,7 @@ func GenerateListTested(c config.Provider) tea.Msg {
 	examples := GenerateExamplesList(c)
 	switch ex := examples.(type) {
 	case ErrorMsg:
-		fmt.Println(ex.Cause.Error())
+		log.Print(ex.Cause.Error())
 		os.Exit(1)
 
 	case tui.LoadedExamples:
@@ -387,9 +429,11 @@ func GenerateListTested(c config.Provider) tea.Msg {
 				continue
 			}
 			for _, val := range v {
-				e := val.(*tui.Example)
-				apiVersion := strings.Split(e.APIVersion, "/")
-				data.CheckIfTested(apiVersion[0], e.Kind)
+				e, ok := val.(*tui.Example)
+				if ok {
+					apiVersion := strings.Split(e.APIVersion, "/")
+					data.CheckIfTested(apiVersion[0], e.Kind)
+				}
 			}
 		}
 
@@ -404,13 +448,17 @@ func GenerateListTested(c config.Provider) tea.Msg {
 {{ end }}
 `
 
-		ProcessTemplate(
+		processTemplate(
 			markdownTemplate,
 			c.Path+"/list-tested.md",
 			data,
 		)
-
 	}
-
 	return tui.ListTestedDone{}
+}
+
+// IsYamlFile returns true if the file is a yaml file.
+func IsYamlFile(fileName string) bool {
+	ext := filepath.Ext(fileName)
+	return ext == ".yaml" || ext == ".yml"
 }

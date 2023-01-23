@@ -12,7 +12,13 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 )
 
-// Model is the model of the error panel
+const (
+	spinnerFPS  = 10
+	marginTop   = 2
+	marginWidth = 2
+)
+
+// Model is the model of the error panel.
 type Model struct {
 	tea.Model
 	reason        string
@@ -21,9 +27,9 @@ type Model struct {
 	spinner       spinner.Model
 }
 
-// New returns a new model of the error panel
+// New returns a new model of the error panel.
 func New(w, h int) Model {
-	s := spinner.NewModel()
+	s := spinner.New()
 	s.Spinner = spinner.Spinner{
 		Frames: []string{
 			"(●    ) W",
@@ -48,7 +54,7 @@ func New(w, h int) Model {
 			"(  ●  ) We've got a problem ",
 			"(   ● ) We've got a problem !",
 		},
-		FPS: time.Second / 10,
+		FPS: time.Second / spinnerFPS,
 	}
 	s.Style = lipgloss.NewStyle().Foreground(tui.RedColour).Bold(true)
 
@@ -59,26 +65,26 @@ func New(w, h int) Model {
 	}
 }
 
-// Init initializes the model
+// Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-// Update updates the model
+// Update updates the model.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.spinner, cmd = m.spinner.Update(msg)
 	return m, cmd
 }
 
-// View renders the model
+// View renders the model.
 func (m Model) View() string {
 	var b strings.Builder
 
 	reason := lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.spinner.View(),
-		tui.Reason.Margin(2, 0, 0, 0).Render(m.reason),
+		tui.Reason.Margin(marginTop, 0, 0, 0).Render(m.reason),
 	)
 
 	desc := tui.Cause.Render(wordwrap.String(m.cause, m.width))
@@ -90,8 +96,8 @@ func (m Model) View() string {
 	)
 
 	panelWithBorder := lipgloss.NewStyle().
-		Height(m.height - 2).
-		Width(m.width - 2).
+		Height(m.height - marginTop).
+		Width(m.width - marginWidth).
 		MaxHeight(m.height).
 		Border(lipgloss.HiddenBorder()).
 		Render(panel)
@@ -100,7 +106,7 @@ func (m Model) View() string {
 	return b.String()
 }
 
-// RaiseError raises an error
+// RaiseError raises an error.
 func (m Model) RaiseError(reason string, cause error) Model {
 	m.reason = reason
 	if cause != nil {
@@ -110,18 +116,18 @@ func (m Model) RaiseError(reason string, cause error) Model {
 	return m
 }
 
-// Resize resizes the model
+// Resize resizes the model.
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 }
 
-// Width returns the width of the model
+// Width returns the width of the model.
 func (m Model) Width() int {
 	return m.width
 }
 
-// Height returns the height of the model
+// Height returns the height of the model.
 func (m Model) Height() int {
 	return lipgloss.Height(m.View())
 }

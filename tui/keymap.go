@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 )
 
-// ListKeyMap is the keymap for the application
+// ListKeyMap is the keymap for the application.
 type ListKeyMap struct {
 	help.KeyMap
 	ListKeyMap            list.KeyMap
@@ -33,7 +33,7 @@ type ListKeyMap struct {
 	ActiveFullHelp        [][]key.Binding
 }
 
-// NewListKeyMap creates a new keymap
+// NewListKeyMap creates a new keymap.
 func NewListKeyMap() *ListKeyMap {
 	return &ListKeyMap{
 		Quit: key.NewBinding(
@@ -105,7 +105,7 @@ func NewListKeyMap() *ListKeyMap {
 	}
 }
 
-// ShortHelp returns the short help
+// ShortHelp returns the short help.
 func (m ListKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
 		m.VpKM.Up,
@@ -125,7 +125,7 @@ func (m ListKeyMap) ShortHelp() []key.Binding {
 	}
 }
 
-// FullHelp returns the full help
+// FullHelp returns the full help.
 func (m ListKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{m.VpKM.Up, m.VpKM.Down, m.VpKM.PageUp, m.VpKM.PageDown},
@@ -138,7 +138,7 @@ func (m ListKeyMap) FullHelp() [][]key.Binding {
 	}
 }
 
-// EnableViewPortKeys is the set of keys for the viewport
+// EnableViewPortKeys is the set of keys for the viewport.
 func (m *ListKeyMap) EnableViewPortKeys() {
 	m.disableK8SKeys()
 	m.Back.SetEnabled(true)
@@ -189,7 +189,7 @@ func (m *ListKeyMap) disableK8SKeys() {
 	m.ShowDependanciesFiles.SetEnabled(false)
 }
 
-// EnableRootKeys is the set of keys for the root
+// EnableRootKeys is the set of keys for the root.
 func (m *ListKeyMap) EnableRootKeys() {
 	m.disableK8SKeys()
 	m.disableViewPortKeys()
@@ -205,7 +205,7 @@ func (m *ListKeyMap) EnableRootKeys() {
 	m.GenerateListTested.SetEnabled(true)
 }
 
-// EnableKindListKeys is the set of keys for the kind list
+// EnableKindListKeys is the set of keys for the kind list.
 func (m *ListKeyMap) EnableKindListKeys() {
 	m.disableViewPortKeys()
 	m.enableK8SKeys()
@@ -218,7 +218,7 @@ func (m *ListKeyMap) EnableKindListKeys() {
 	m.Back.SetEnabled(true)
 }
 
-// EnablePrintK8SKeys is the set of keys for the k8s print view
+// EnablePrintK8SKeys is the set of keys for the k8s print view.
 func (m *ListKeyMap) EnablePrintK8SKeys() {
 	m.disableK8SKeys()
 	m.disableViewPortKeys()
@@ -230,7 +230,7 @@ func (m *ListKeyMap) EnablePrintK8SKeys() {
 	m.LeftRight.SetEnabled(false)
 }
 
-// EnableDialogBoxKeys is the set of keys for the dialog box
+// EnableDialogBoxKeys is the set of keys for the dialog box.
 func (m *ListKeyMap) EnableDialogBoxKeys() {
 	m.disableK8SKeys()
 	m.disableViewPortKeys()
@@ -239,4 +239,13 @@ func (m *ListKeyMap) EnableDialogBoxKeys() {
 	m.LeftRight.SetEnabled(true)
 	m.Help.SetEnabled(false)
 	m.Select.SetEnabled(true)
+}
+
+func (m *ListKeyMap) EnableManagedKeys() {
+	m.Get.SetEnabled(false)
+	m.Print.SetEnabled(false)
+	m.ShowDependanciesFiles.SetEnabled(false)
+	m.Select.SetEnabled(false)
+	m.Back.SetEnabled(true)
+	m.Help.SetEnabled(false)
 }

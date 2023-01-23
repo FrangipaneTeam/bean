@@ -2,7 +2,9 @@
 package pages
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 
 	"github.com/FrangipaneTeam/bean/config"
@@ -12,7 +14,7 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
-// Model is the model of the pages
+// Model is the model of the pages.
 type Model interface {
 	tea.Model
 
@@ -21,80 +23,46 @@ type Model interface {
 	Height() int
 }
 
-// NotifyActivity is a struct that holds the name of the file that was changed
+// NotifyActivity is a struct that holds the name of the file that was changed.
 type NotifyActivity struct {
 	FileName string
 }
 
-// ResponseCRDMsg is a response to a crd activity
+// ResponseCRDMsg is a response to a crd activity.
 type ResponseCRDMsg NotifyActivity
 
-// ResponseExamplesMsg is a response to an examples activity
+// ResponseExamplesMsg is a response to an examples activity.
 type ResponseExamplesMsg NotifyActivity
 
-// LoadExamples loads the examples from the examples directory
+// LoadExamples loads the examples from the examples directory.
 func LoadExamples(c config.Provider) tea.Cmd {
 	return func() tea.Msg {
 		return tools.GenerateExamplesList(c)
 	}
 }
 
-// GenerateListTested generates the list of tested CRDs
+// GenerateListTested generates the list of tested CRDs.
 func GenerateListTested(c config.Provider) tea.Cmd {
 	return func() tea.Msg {
 		return tools.GenerateListTested(c)
 	}
 }
 
-// ListenForCRDActivity watches for crd file changes and sends a message to the channel
 func ListenForCRDActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 	return func() tea.Msg {
-		watcher, err := fsnotify.NewWatcher()
+		watcher, err := newWatcher()
 		if err != nil {
 			return tools.ErrorMsg{
 				Reason: "NewWatcher error",
 				Cause:  err,
 			}
 		}
-
 		defer watcher.Close()
 
 		done := make(chan bool)
+		go watchCRDFiles(watcher, done, ch)
 
-		// go routine to watch for crd file changes via fsnotify
-		go func() tea.Msg {
-			defer close(done)
-
-			for {
-				select {
-				case event, ok := <-watcher.Events:
-					if !ok {
-						if err != nil {
-							return tools.ErrorMsg{
-								Reason: "NewWatcher error",
-								Cause:  err,
-							}
-						}
-					}
-					switch filepath.Ext(event.Name) {
-					case ".yaml", ".yml":
-						f := NotifyActivity{
-							FileName: event.Name,
-						}
-						ch <- f
-					}
-				case err, ok := <-watcher.Errors:
-					if !ok {
-						return tools.ErrorMsg{
-							Reason: "NewWatcher error",
-							Cause:  err,
-						}
-					}
-				}
-			}
-		}() // end of go routine
-
-		err = watcher.Add(fmt.Sprintf("%s/package/crds", c.Path))
+		err = addCRDFolder(watcher, c.Path)
 		if err != nil {
 			return tools.ErrorMsg{
 				Reason: "NewWatcher error",
@@ -106,11 +74,47 @@ func ListenForCRDActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 	}
 }
 
-// ListenForExamplesActivity watches for examples file changes and sends a message to the channel
-// nolint: gocyclo // FIXME refactor
+func newWatcher() (*fsnotify.Watcher, error) {
+	return fsnotify.NewWatcher()
+}
+
+func watchCRDFiles(watcher *fsnotify.Watcher, done chan bool, ch chan NotifyActivity) tea.Msg {
+	defer close(done)
+
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return tools.ErrorMsg{
+					Reason: "NewWatcher error",
+					Cause:  errors.New("event not ok"),
+				}
+			}
+			if tools.IsYamlFile(event.Name) {
+				f := NotifyActivity{
+					FileName: event.Name,
+				}
+				ch <- f
+			}
+		case errWatcher, ok := <-watcher.Errors:
+			if !ok {
+				return tools.ErrorMsg{
+					Reason: "NewWatcher error",
+					Cause:  errWatcher,
+				}
+			}
+		}
+	}
+}
+
+func addCRDFolder(watcher *fsnotify.Watcher, path string) error {
+	return watcher.Add(fmt.Sprintf("%s/package/crds", path))
+}
+
+// ListenForExamplesActivity watches for examples file changes and sends a message to the channel.
 func ListenForExamplesActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 	return func() tea.Msg {
-		watcher, err := rfsnotify.NewWatcher()
+		watcher, err := newRecursiveWatcher()
 		if err != nil {
 			return tools.ErrorMsg{
 				Reason: "NewWatcher error",
@@ -120,40 +124,9 @@ func ListenForExamplesActivity(ch chan NotifyActivity, c config.Provider) tea.Cm
 		defer watcher.Close()
 
 		done := make(chan bool)
+		go watchExamplesFiles(watcher, done, ch)
 
-		// go routine to watch for crd file changes via fsnotify
-		go func() tea.Msg {
-			defer close(done)
-
-			for {
-				select {
-				case event, ok := <-watcher.Events:
-					if !ok {
-						return tools.ErrorMsg{
-							Reason: "NewWatcher error",
-							Cause:  err,
-						}
-					}
-					// ignore changes if the file extension is not yaml, yml, secret or extra
-					switch filepath.Ext(event.Name) {
-					case ".yaml", ".yml", ".secret", ".extra":
-						f := NotifyActivity{
-							FileName: event.Name,
-						}
-						ch <- f
-					}
-				case err, ok := <-watcher.Errors:
-					if !ok {
-						return tools.ErrorMsg{
-							Reason: "NewWatcher error",
-							Cause:  err,
-						}
-					}
-				}
-			}
-		}() // end of go routine
-
-		err = watcher.AddRecursive(fmt.Sprintf("%s/examples", c.Path))
+		err = addExamplesFolder(watcher, c.Path)
 		if err != nil {
 			return tools.ErrorMsg{
 				Reason: "NewWatcher error",
@@ -161,19 +134,55 @@ func ListenForExamplesActivity(ch chan NotifyActivity, c config.Provider) tea.Cm
 			}
 		}
 		<-done
-
 		return ch
 	}
 }
 
-// WaitForCrdActivity waits for a message from the channel and returns a message
+func watchExamplesFiles(watcher *rfsnotify.RWatcher, done chan bool, ch chan NotifyActivity) {
+	defer close(done)
+
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			if isExamplesFile(event.Name) {
+				f := NotifyActivity{
+					FileName: event.Name,
+				}
+				ch <- f
+			}
+		case errWatcher, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			log.Println("Error:", errWatcher)
+		}
+	}
+}
+
+func isExamplesFile(fileName string) bool {
+	ext := filepath.Ext(fileName)
+	return ext == ".yaml" || ext == ".yml" || ext == ".secret" || ext == ".extra"
+}
+
+func addExamplesFolder(watcher *rfsnotify.RWatcher, path string) error {
+	return watcher.AddRecursive(fmt.Sprintf("%s/examples", path))
+}
+
+func newRecursiveWatcher() (*rfsnotify.RWatcher, error) {
+	return rfsnotify.NewWatcher()
+}
+
+// WaitForCrdActivity waits for a message from the channel and returns a message.
 func WaitForCrdActivity(sub <-chan NotifyActivity) tea.Cmd {
 	return func() tea.Msg {
 		return ResponseCRDMsg(<-sub)
 	}
 }
 
-// WaitForExamplesActivity waits for a message from the channel and returns a message
+// WaitForExamplesActivity waits for a message from the channel and returns a message.
 func WaitForExamplesActivity(sub <-chan NotifyActivity) tea.Cmd {
 	return func() tea.Msg {
 		return ResponseExamplesMsg(<-sub)

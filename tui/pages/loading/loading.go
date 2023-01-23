@@ -67,10 +67,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tui.LoadedExamples:
 		e := examples.New(msg, m.width, m.height, m.config)
-		cmd := e.Init()
+		cmd = e.Init()
 		return e, cmd
 
-	case tools.ErrorMsg:
+	case *tools.ErrorMsg:
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.errorRaised = true
 		cmd = m.errorPanel.Init()
@@ -105,5 +105,4 @@ func (m model) View() string {
 	}
 
 	return tui.AppStyle.Render(str)
-
 }

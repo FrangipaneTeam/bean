@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Model is the model of the footer
+// Model is the model of the footer.
 type Model struct {
 	tea.Model
 	Message string
@@ -20,12 +20,12 @@ type Model struct {
 	Keymap  *tui.ListKeyMap
 }
 
-// Init initializes the model
+// Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// New creates a new footer model
+// New creates a new footer model.
 func New(w int, km *tui.ListKeyMap) Model {
 	help := help.New()
 	help.Styles.ShortSeparator = tui.Ellipsis
@@ -42,12 +42,12 @@ func New(w int, km *tui.ListKeyMap) Model {
 	}
 }
 
-// Update updates the model
+// Update updates the model.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-// View renders the model
+// View renders the model.
 func (m Model) View() string {
 	footer := strings.Builder{}
 	message := fmt.Sprintf(
@@ -78,17 +78,17 @@ func (m Model) View() string {
 	return footer.String()
 }
 
-// Height return the height of the view
+// Height return the height of the view.
 func (m Model) Height() int {
 	return lipgloss.Height(m.View())
 }
 
-// Width return the width of the view
+// Width return the width of the view.
 func (m Model) Width() int {
 	return lipgloss.Width(m.View())
 }
 
-// SetWidth sets the width of the view
+// SetWidth sets the width of the view.
 func (m *Model) SetWidth(w int) {
 	m.width = w
 }

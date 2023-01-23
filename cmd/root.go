@@ -2,7 +2,7 @@
 package cmd
 
 import (
-	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"time"
@@ -26,7 +26,7 @@ var (
 			p := tea.NewProgram(loading.New(c))
 
 			if _, err := p.Run(); err != nil {
-				fmt.Println("Error running program:", err)
+				log.Printf("error running program: %v", err)
 				os.Exit(1)
 			}
 		},

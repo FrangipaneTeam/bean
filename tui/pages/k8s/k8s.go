@@ -11,8 +11,7 @@ import (
 // Model is the model of the error panel.
 type Model struct {
 	tea.Model
-	keys          *tui.ListKeyMap
-	showDialogBox bool
+	keys *tui.ListKeyMap
 }
 
 type Message struct {
@@ -20,15 +19,13 @@ type Message struct {
 }
 
 type Cmd struct {
-	ID        string
-	Done      bool
-	Canceled  bool
-	confirmed bool
-	Verb      string
-	cmdOutput string
-	Files     []string
-	Kind      string
-	Result    string
+	ID       string
+	Done     bool
+	Canceled bool
+	Verb     string
+	Files    []string
+	Kind     string
+	Result   string
 }
 
 // Init initializes the model.
@@ -59,7 +56,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			return m, cmd
 		}
-
 	}
 	return m, tea.Batch(cmds...)
 }

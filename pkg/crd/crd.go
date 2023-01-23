@@ -3,7 +3,6 @@ package crd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -26,7 +25,7 @@ type CRD struct {
 }
 
 // GetCRDs returns a list of CRDs from the specified path.
-func GetCRDs(path ...string) (crds []CRD, err error) {
+func GetCRDs(path ...string) ([]CRD, error) {
 	if len(path) == 0 {
 		path = append(path, "package/crds/")
 	}
@@ -42,13 +41,11 @@ func GetCRDs(path ...string) (crds []CRD, err error) {
 		listFilesCrds = append(listFilesCrds, x...)
 	}
 
-	// ExcludeFiles(listFilesCrds)
-
-	crds = make([]CRD, 0)
+	crds := make([]CRD, 0)
 	for _, file := range listFilesCrds {
 		var w = &CRD{}
 
-		y, err := ioutil.ReadFile(file)
+		y, err := os.ReadFile(file)
 		if err != nil {
 			return nil, err
 		}
@@ -66,14 +63,13 @@ func GetCRDs(path ...string) (crds []CRD, err error) {
 }
 
 func listFiles(dir string, ext string) ([]string, error) {
-
 	// Check if the directory exists
 	if _, err := os.Stat(dir); err != nil {
 		return nil, fmt.Errorf("directory %s does not exist", dir)
 	}
 
 	// Get a list of files in the directory
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}

@@ -2,9 +2,10 @@
 package examples
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -33,30 +34,25 @@ const (
 	pPrintActions = "printActions"
 	pK8S          = "k8s"
 	pDialogBox    = "dialogbox"
+
+	k8sDelete  = "delete"
+	k8sApply   = "apply"
+	k8sManaged = "managed"
+
+	k8sProgressIncrement = 0.1
 )
 
-var (
-	letters    = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	k8sCmdList map[string]*k8s.Cmd
+const (
+	progressWidth = 10
 )
 
 func randSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
 	}
-	return string(b)
-}
-
-type k8sCmd struct {
-	ID        string
-	Done      bool
-	canceled  bool
-	confirmed bool
-	verb      string
-	cmdOutput string
-	Files     []string
-	Kind      string
+	return hex.EncodeToString(b)
 }
 
 type model struct {
@@ -83,18 +79,17 @@ type model struct {
 
 	config config.Provider
 
-	k8sCurrentIDView    string
-	k8sProgressMsg      string
-	k8sGetWithoutAction bool
-	progressK8SGet      progress.Model
-	tickRunning         bool
-
-	previousItemPostion int
+	k8sCurrentIDView string
+	k8sProgressMsg   string
+	progressK8SGet   progress.Model
+	tickRunning      bool
 
 	listOldHeight int
 	centerHeight  int
 
 	dialogbox dialogbox.Model
+
+	k8sCmdList map[string]*k8s.Cmd
 }
 
 type tickK8SGet time.Time
@@ -103,13 +98,9 @@ type tickK8SGet time.Time
 // nolint: golint // model not used outside of this package
 func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	h, v := tui.AppStyle.GetFrameSize()
-	// physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
-	// wP := physicalWidth - tui.AppStyle.GetHorizontalPadding()
-	// hP := physicalHeight - tui.AppStyle.GetVerticalPadding()
 
 	rootKeys := tui.NewListKeyMap()
 	dialogKeys := tui.NewListKeyMap()
-	// listKeys.EnableRootKeys()
 	delegate := list.NewDefaultDelegate()
 
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
@@ -159,8 +150,6 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 
 	list.SetSize(width-h, height-v-headerHeight-footerHeight)
 
-	k8sCmdList = make(map[string]*k8s.Cmd)
-
 	// default activated keys
 	rootKeys.EnableRootKeys()
 	dialogKeys.EnableDialogBoxKeys()
@@ -191,8 +180,10 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 		progressK8SGet: progress.New(
 			progress.WithSolidFill("#CBEDD5"),
 			progress.WithoutPercentage(),
-			progress.WithWidth(10),
+			progress.WithWidth(progressWidth),
 		),
+
+		k8sCmdList: make(map[string]*k8s.Cmd),
 	}
 }
 
@@ -208,7 +199,6 @@ func (m model) Init() tea.Cmd {
 
 // Update updates the model.
 // nolint: gocyclo // TODO: refactor
-// TODO show SetEnabled to enable/disable keys
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -216,7 +206,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-
 	// Is it a key press?
 	case tea.KeyMsg:
 		// Don't match any of the keys below if we're actively filtering.
@@ -233,7 +222,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tickRunning = false
 
 			// back to the list, cancel all k8sCmd
-			for _, v := range k8sCmdList {
+			for _, v := range m.k8sCmdList {
 				v.Canceled = true
 			}
 
@@ -271,10 +260,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.viewName {
 			case pDialogBox:
 				var newModel model
-				var cmds []tea.Cmd
 				var k8sCmd *k8s.Cmd
 
-				if m.dialogbox.ActiveButton == 2 {
+				if m.dialogbox.ActiveButton == dialogbox.GetCancelValue() {
 					newModel = m
 					newModel.header.Notification = "cancel delete"
 					newModel.header.NotificationOK = tui.ErrorMark
@@ -290,12 +278,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					newModel.k8sProgressMsg = "delete sent !"
-					k8sCmd.Verb = "delete"
+					k8sCmd.Verb = k8sDelete
 
 					newModel.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
 					newModel.header.NotificationOK = tui.RunningMark
 
-					k8sCmdList[k8sCmd.ID] = k8sCmd
+					m.k8sCmdList[k8sCmd.ID] = k8sCmd
 					cmd = tools.Kubectl(k8sCmd)
 
 					newModel.viewName = m.oldViewName
@@ -382,7 +370,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply):
 			// TODO: in witch case m.currentList.SelectedItem() == nil ?
-			m, k8sCmd, cmd := m.generateK8SFiles()
+			var k8sCmd *k8s.Cmd
+			m, k8sCmd, cmd = m.generateK8SFiles()
 			if cmd != nil {
 				return m, cmd
 			}
@@ -391,27 +380,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keys.Get):
 				m.viewName = pK8S
 				m.k8sCurrentIDView = k8sCmd.ID
-				m.keys.Get.SetEnabled(false)
-				m.keys.Print.SetEnabled(false)
-				m.keys.ShowDependanciesFiles.SetEnabled(false)
-				m.keys.Select.SetEnabled(false)
-				m.keys.Back.SetEnabled(true)
-				m.keys.Help.SetEnabled(false)
-				k8sCmd.Verb = "managed"
+				m.keys.EnableManagedKeys()
+				k8sCmd.Verb = k8sManaged
 
 			case key.Matches(msg, m.keys.Apply):
 				m.k8sProgressMsg = "apply sent !"
-				k8sCmd.Verb = "apply"
+				k8sCmd.Verb = k8sApply
 
 			case key.Matches(msg, m.keys.Delete):
 				m.k8sProgressMsg = "delete sent !"
-				k8sCmd.Verb = "delete"
+				k8sCmd.Verb = k8sDelete
 			}
 
 			m.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
 			m.header.NotificationOK = tui.RunningMark
 
-			k8sCmdList[k8sCmd.ID] = k8sCmd
+			m.k8sCmdList[k8sCmd.ID] = k8sCmd
 			cmd = tools.Kubectl(k8sCmd)
 			return m, cmd
 		}
@@ -478,7 +462,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case *k8s.Cmd:
 		if msg.Canceled {
-			delete(k8sCmdList, msg.ID)
+			delete(m.k8sCmdList, msg.ID)
 			return m, nil
 		}
 
@@ -509,32 +493,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.tickRunning {
-			var kCmd tea.Cmd
+			var kubectlCmd tea.Cmd
 			if m.progressK8SGet.Percent() == 1.0 {
 				m.progressK8SGet.SetPercent(0)
 
-				kCmd = tools.Kubectl(k8sCmdList[m.k8sCurrentIDView])
+				kubectlCmd = tools.Kubectl(m.k8sCmdList[m.k8sCurrentIDView])
 			}
 
 			// Note that you can also use progress.Model.SetPercent to set the
 			// percentage value explicitly, too.
-			cmd := m.progressK8SGet.IncrPercent(0.1)
-			return m, tea.Batch(m.tickCmd(), cmd, kCmd)
+			cmd = m.progressK8SGet.IncrPercent(k8sProgressIncrement)
+			return m, tea.Batch(m.tickCmd(), cmd, kubectlCmd)
 		}
 
 	// FrameMsg is sent when the progress bar wants to animate itself
 	case progress.FrameMsg:
-		progressModel, cmd := m.progressK8SGet.Update(msg)
+		var progressModel tea.Model
+		progressModel, cmd = m.progressK8SGet.Update(msg)
 		m.progressK8SGet = progressModel.(progress.Model)
 		return m, cmd
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
 	if m.viewName == pRoot || m.viewName == pRessources {
-		newListModel, cmd := m.currentList.Update(msg)
+		newListModel, cmdList := m.currentList.Update(msg)
 		m.currentList = newListModel
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, cmdList)
 	}
 
 	m.header, cmd = m.header.Update(msg)
@@ -592,7 +576,7 @@ func (m model) View() string {
 			center.WriteString(m.markdown.Viewport.View())
 
 		case pK8S:
-			cmd := k8sCmdList[m.k8sCurrentIDView]
+			cmd := m.k8sCmdList[m.k8sCurrentIDView]
 			getOutput := "loading..."
 			if cmd.Done {
 				getOutput = cmd.Result
