@@ -661,7 +661,7 @@ func (m model) View() string {
 
 			renderer, _ := glamour.NewTermRenderer(
 				glamour.WithAutoStyle(),
-				glamour.WithWordWrap(m.width),
+				glamour.WithWordWrap(m.width-2),
 				glamour.WithStylePath("dracula"),
 			)
 			ui, _ := renderer.Render(strings.Join(str, "\n"))

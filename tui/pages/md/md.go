@@ -2,7 +2,6 @@
 package md
 
 import (
-	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -25,9 +24,7 @@ func New(w, h int) Model {
 	vp := viewport.New(w, h)
 	vp.Style = lipgloss.NewStyle().
 		Width(w).
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(tui.BorderColour)
-	// PaddingRight(2)
+		PaddingRight(2)
 	return Model{
 		Width:    w,
 		Height:   h,
@@ -54,7 +51,6 @@ func (m *Model) SetSize(w, h int) {
 	m.Viewport.Width = w
 	m.Viewport.Style = lipgloss.NewStyle().
 		Width(w).
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(tui.BorderColour)
+		PaddingRight(2)
 	viewport.Sync(m.Viewport)
 }
