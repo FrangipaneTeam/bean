@@ -9,16 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/tools"
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
-	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
-	"github.com/FrangipaneTeam/bean/tui/pages/footer"
-	"github.com/FrangipaneTeam/bean/tui/pages/header"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
-	"github.com/FrangipaneTeam/bean/tui/pages/md"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
@@ -28,22 +24,12 @@ import (
 )
 
 const (
-	pViewPort     = "viewport"
-	pRoot         = "root"
-	pRessources   = "ressources"
-	pPrintActions = "printActions"
-	pK8S          = "k8s"
-	pDialogBox    = "dialogbox"
-
 	k8sDelete  = "delete"
 	k8sApply   = "apply"
 	k8sManaged = "managed"
 
-	k8sProgressIncrement = 0.1
-)
-
-const (
-	progressWidth = 10
+	k8sProgressIncrement     = 0.1
+	progressWidth        int = 10
 )
 
 func randSeq(n int) string {
@@ -53,138 +39,6 @@ func randSeq(n int) string {
 		panic(err)
 	}
 	return hex.EncodeToString(b)
-}
-
-type model struct {
-	exampleList map[string][]list.Item
-	currentList list.Model
-
-	listName      string
-	width, height int
-	keys          *tui.ListKeyMap
-	oldKeys       *tui.ListKeyMap
-
-	viewName    string
-	oldViewName string
-
-	showDependenciesFiles bool
-
-	errorRaised bool
-
-	header     header.Model
-	footer     footer.Model
-	errorPanel errorpanel.Model
-	markdown   md.Model
-	k8s        k8s.Model
-
-	config config.Provider
-
-	k8sCurrentIDView string
-	k8sProgressMsg   string
-	progressK8SGet   progress.Model
-	tickRunning      bool
-
-	listOldHeight int
-	centerHeight  int
-
-	dialogbox dialogbox.Model
-
-	k8sCmdList map[string]*k8s.Cmd
-}
-
-type tickK8SGet time.Time
-
-// New returns a new model of the examples page.
-// nolint: golint // model not used outside of this package
-func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
-	h, v := tui.AppStyle.GetFrameSize()
-
-	rootKeys := tui.NewListKeyMap()
-	dialogKeys := tui.NewListKeyMap()
-	delegate := list.NewDefaultDelegate()
-
-	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightColour).
-		Bold(true)
-
-	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightFeintColour)
-
-	delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.
-		Foreground(tui.FeintColour)
-
-	delegate.Styles.FilterMatch = lipgloss.NewStyle().
-		Underline(true).
-		Bold(true)
-
-	list := list.New(e.Examples["-"],
-		delegate,
-		width,
-		height,
-	)
-	list.Title = "Choose an example"
-	list.DisableQuitKeybindings()
-	list.SetShowHelp(false)
-	list.SetStatusBarItemName("example", "examples")
-
-	version := lipgloss.NewStyle().Foreground(tui.NotificationColour).Render("v" + c.Version)
-	if c.NewVersion != "" {
-		newVersion := lipgloss.NewStyle().
-			Foreground(tui.NotificationColour).
-			Render("v" + c.NewVersion)
-		version = fmt.Sprintf("v%s (new version available: %s)", c.Version, newVersion)
-	}
-
-	header := header.New(
-		"Bean "+version,
-		"A FrangipaneTeam bin",
-		width-h,
-		c,
-	)
-
-	footer := footer.New(width-h, rootKeys)
-	headerHeight := header.Height()
-	footerHeight := footer.Height()
-
-	list.SetSize(width-h, height-v-headerHeight-footerHeight)
-
-	// default activated keys
-	rootKeys.EnableRootKeys()
-	dialogKeys.EnableDialogBoxKeys()
-
-	return model{
-		exampleList: e.Examples,
-		currentList: list,
-		listName:    "-",
-		viewName:    pRoot,
-
-		keys:       rootKeys,
-		header:     header,
-		footer:     footer,
-		errorPanel: errorpanel.New(width-h, height-v-headerHeight-footerHeight),
-		markdown:   md.New(width-h, height-v-headerHeight-footerHeight),
-		dialogbox: dialogbox.New(
-			width-h,
-			height-v-headerHeight-footerHeight,
-			dialogKeys,
-		),
-		k8s:          k8s.New(rootKeys),
-		width:        width - h,
-		height:       height - v,
-		centerHeight: height - v - headerHeight - footerHeight,
-		config:       c,
-
-		showDependenciesFiles: true,
-		progressK8SGet: progress.New(
-			progress.WithSolidFill("#CBEDD5"),
-			progress.WithoutPercentage(),
-			progress.WithWidth(progressWidth),
-		),
-
-		k8sCmdList: make(map[string]*k8s.Cmd),
-	}
 }
 
 // Init initializes the model.
@@ -198,7 +52,6 @@ func (m model) Init() tea.Cmd {
 }
 
 // Update updates the model.
-// nolint: gocyclo // TODO: refactor
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -214,8 +67,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.keys.Quit):
-			return m, tea.Quit
 
 		case key.Matches(msg, m.keys.Back):
 			m.errorRaised = false
@@ -229,26 +80,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.progressK8SGet.SetPercent(0)
 			cmds = append(cmds, cmd)
 
-			switch m.viewName {
-			case pRessources:
+			switch view := m.common.GetViewName(); view {
+			case common.PRessources:
 				m, cmd = m.rootView()
 				return m, cmd
 
-			case pViewPort:
-				m.viewName = pRoot
+			case common.PViewPort:
+				m.common.SetViewName(common.PRoot)
 				m.keys.EnableRootKeys()
 				return m, cmd
 
-			case pPrintActions, pK8S, pDialogBox:
-				if m.viewName == pK8S && !m.keys.Apply.Enabled() {
+			case common.PPrintActions, common.PK8S, common.PDialogBox:
+				if view == common.PK8S && !m.keys.Apply.Enabled() {
 					m, cmd = m.rootView()
 					return m, cmd
 				}
 
 				m.keys.EnableKindListKeys()
-				m.viewName = pRessources
+				m.common.SetViewName(common.PRessources)
 				cmd = m.currentList.NewStatusMessage("back to " + m.listName)
-				// m.currentList.ResetSelected()
 				cmds = append(cmds, cmd)
 				m, cmd = m.showYaml(m.listName)
 			}
@@ -257,8 +107,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, m.keys.Select):
-			switch m.viewName {
-			case pDialogBox:
+			switch view := m.common.GetViewName(); view {
+			case common.PDialogBox:
 				var newModel model
 				var k8sCmd *k8s.Cmd
 
@@ -266,13 +116,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newModel = m
 					newModel.header.Notification = "cancel delete"
 					newModel.header.NotificationOK = tui.ErrorMark
-					newModel.viewName = m.oldViewName
+					newModel.common.SetViewName(m.common.GetOldViewName())
 					*newModel.keys = *m.oldKeys
 				} else {
 					m.header.NotificationOK = tui.RunningMark
 					newModel, k8sCmd, cmd = m.generateK8SFiles()
 					if cmd != nil {
-						newModel.viewName = m.oldViewName
+						newModel.common.SetViewName(m.common.GetOldViewName())
 						*newModel.keys = *m.oldKeys
 						return newModel, cmd
 					}
@@ -286,19 +136,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.k8sCmdList[k8sCmd.ID] = k8sCmd
 					cmd = tools.Kubectl(k8sCmd)
 
-					newModel.viewName = m.oldViewName
+					newModel.common.SetViewName(m.common.GetOldViewName())
 					*newModel.keys = *m.oldKeys
 
 					cmds = append(cmds, cmd)
 				}
 
-				if newModel.viewName == pK8S {
+				if newModel.common.GetViewName() == common.PK8S {
 					cmds = append(cmds, m.tickCmd())
 				}
 
 				return newModel, tea.Batch(cmds...)
 
-			case pRoot:
+			case common.PRoot:
 				title := m.currentList.SelectedItem().(*tui.Example).Title()
 				if m.currentList.FilterState() == list.FilterApplied {
 					m.currentList.ResetFilter()
@@ -307,21 +157,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.keys.EnableKindListKeys()
 
 				m, cmd = m.showYaml(title)
-				m.viewName = pRessources
+				m.common.SetViewName(common.PRessources)
 
 				m.currentList.Select(0)
 
 				return m, cmd
 			}
 
-		case key.Matches(msg, m.keys.Print):
-			m.keys.EnableViewPortKeys()
-			m.keys.ShowDependanciesFiles.SetEnabled(true)
-			m.viewName = pPrintActions
-			return m, nil
-
 		case key.Matches(msg, m.keys.Help):
-			if m.viewName != pK8S {
+			if m.common.GetViewName() != common.PK8S {
 				m.footer.Help.ShowAll = !m.footer.Help.ShowAll
 				m.footer.Help.Width = m.width
 
@@ -344,7 +188,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.ShowRessources):
 			m.keys.EnableViewPortKeys()
 
-			if m.viewName == pRoot {
+			if m.common.GetViewName() == common.PRoot {
 				cmd = tools.RenderMarkdown(m.config.Path+"/list-resources.md", m.width)
 
 				return m, cmd
@@ -352,7 +196,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.ShowTested):
 			m.keys.EnableViewPortKeys()
-			if m.viewName == pRoot {
+			if m.common.GetViewName() == common.PRoot {
 				cmd = tools.RenderMarkdown(m.config.Path+"/list-tested.md", m.width)
 
 				return m, cmd
@@ -378,7 +222,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			switch {
 			case key.Matches(msg, m.keys.Get):
-				m.viewName = pK8S
+				m.common.SetViewName(common.PK8S)
 				m.k8sCurrentIDView = k8sCmd.ID
 				m.keys.EnableManagedKeys()
 				k8sCmd.Verb = k8sManaged
@@ -429,10 +273,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		okValue := "No Fear !"
 		cancelValue := "I'm scared !"
 		m.dialogbox.SetDialogBox(question, okValue, cancelValue)
-		m.oldViewName = m.viewName
+		m.common.SetOldViewName(m.common.GetViewName())
 		m.oldKeys = &tui.ListKeyMap{}
 		*m.oldKeys = *m.keys
-		m.viewName = pDialogBox
+		m.common.SetViewName(common.PDialogBox)
 		m.keys.EnableDialogBoxKeys()
 		return m, nil
 
@@ -443,7 +287,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentList.SetItems(msg.Examples[m.listName])
 
 	case tools.Markdown:
-		m.viewName = pViewPort
+		m.common.SetViewName(common.PViewPort)
 		m.markdown.Viewport.SetContent(msg.Content)
 		m.markdown.Viewport.GotoTop()
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
@@ -475,7 +319,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case "managed":
-			m.viewName = pK8S
+			m.common.SetViewName(common.PK8S)
 			m.k8sCurrentIDView = msg.ID
 			m.k8sProgressMsg = ""
 			m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
@@ -489,7 +333,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tickK8SGet:
-		if m.viewName == pDialogBox {
+		if m.common.GetViewName() == common.PDialogBox {
 			return m, nil
 		}
 		if m.tickRunning {
@@ -515,7 +359,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
-	if m.viewName == pRoot || m.viewName == pRessources {
+	if m.common.GetViewName() == common.PRoot || m.common.GetViewName() == common.PRessources {
 		newListModel, cmdList := m.currentList.Update(msg)
 		m.currentList = newListModel
 		cmds = append(cmds, cmdList)
@@ -532,7 +376,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.viewName == pViewPort || m.viewName == pPrintActions {
+	if m.common.GetViewName() == common.PViewPort ||
+		m.common.GetViewName() == common.PPrintActions {
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -540,10 +385,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.k8s, cmd = m.k8s.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if m.viewName == pDialogBox {
+	if m.common.GetViewName() == common.PDialogBox {
 		m.dialogbox, cmd = m.dialogbox.Update(msg)
 		cmds = append(cmds, cmd)
 	}
+
+	m.common, cmd = m.common.Update(msg)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -568,14 +416,14 @@ func (m model) View() string {
 	if m.errorRaised {
 		center.WriteString(m.errorPanel.View())
 	} else {
-		switch m.viewName {
-		case pDialogBox:
+		switch m.common.GetViewName() {
+		case common.PDialogBox:
 			center.WriteString(m.dialogbox.View())
 
-		case pViewPort:
+		case common.PViewPort:
 			center.WriteString(m.markdown.Viewport.View())
 
-		case pK8S:
+		case common.PK8S:
 			cmd := m.k8sCmdList[m.k8sCurrentIDView]
 			getOutput := "loading..."
 			if cmd.Done {
@@ -606,10 +454,10 @@ func (m model) View() string {
 
 			center.WriteString(dialog)
 
-		case pRoot, pRessources:
+		case common.PRoot, common.PRessources:
 			center.WriteString(lipgloss.NewStyle().Render(m.currentList.View()))
 
-		case pPrintActions:
+		case common.PPrintActions:
 			selected := m.currentList.SelectedItem().(*tui.Example)
 			selectedFile := selected.Title()
 			yamlFile := ""
@@ -708,7 +556,7 @@ func (m model) tickCmd() tea.Cmd {
 
 func (m model) rootView() (model, tea.Cmd) {
 	var cmds []tea.Cmd
-	m.viewName = pRoot
+	m.common.SetViewName(common.PRoot)
 	m.keys.EnableRootKeys()
 	cmd := m.currentList.NewStatusMessage("back to home")
 	cmds = append(cmds, cmd)
