@@ -4,12 +4,14 @@ import (
 	"strings"
 
 	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Model is the model of the error panel.
 type Model struct {
+	common *common.Model
 	tea.Model
 	keys *tui.ListKeyMap
 }
@@ -34,9 +36,10 @@ func (m Model) Init() tea.Cmd {
 }
 
 // New returns a new model of the k8s page.
-func New(keymap *tui.ListKeyMap) Model {
+func New(keymap *tui.ListKeyMap, common *common.Model) Model {
 	return Model{
-		keys: keymap,
+		keys:   keymap,
+		common: common,
 	}
 }
 
@@ -55,6 +58,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return Message{ShowDialogBox: true}
 			}
 			return m, cmd
+
+		case key.Matches(msg, m.keys.Print):
+			m.keys.EnableViewPortKeys()
+			m.keys.ShowDependanciesFiles.SetEnabled(true)
+			m.common.SetViewName(common.PPrintActions)
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
