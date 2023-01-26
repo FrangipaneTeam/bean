@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"strings"
 
 	"github.com/FrangipaneTeam/bean/tui"
@@ -21,13 +22,13 @@ type Message struct {
 }
 
 type Cmd struct {
-	ID       string
-	Done     bool
-	Canceled bool
-	Verb     string
-	Files    []string
-	Kind     string
-	Result   string
+	ID     string
+	Done   bool
+	Verb   string
+	Files  []string
+	Kind   string
+	Result string
+	Cancel context.CancelFunc
 }
 
 // Init initializes the model.

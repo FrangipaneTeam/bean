@@ -2,6 +2,7 @@
 package examples
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -74,11 +75,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// back to the list, cancel all k8sCmd
 			for _, v := range m.k8sCmdList {
-				v.Canceled = true
+				v.Cancel()
 			}
+
+			m.common.ClearContextToStop()
+			m.header.RunningCommands = 0
+
+			m.k8sCmdList = make(map[string]*k8s.Cmd)
 
 			cmd = m.progressK8SGet.SetPercent(0)
 			cmds = append(cmds, cmd)
+
+			// error handling
+			if m.errorRaised {
+				m.errorRaised = false
+				*m.keys = *m.oldKeys
+				return m, nil
+			}
 
 			switch view := m.common.GetViewName(); view {
 			case common.PRessources:
@@ -107,6 +120,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, m.keys.Select):
+
 			switch view := m.common.GetViewName(); view {
 			case common.PDialogBox:
 				var newModel model
@@ -133,8 +147,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newModel.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
 					newModel.header.NotificationOK = tui.RunningMark
 
+					ctx, cancel := context.WithCancel(context.Background())
+					k8sCmd.Cancel = cancel
+					m.common.AddContextToStop(cancel)
 					m.k8sCmdList[k8sCmd.ID] = k8sCmd
-					cmd = tools.Kubectl(k8sCmd)
+					cmd = tools.Kubectl(ctx, k8sCmd)
 
 					newModel.common.SetViewName(m.common.GetOldViewName())
 					*newModel.keys = *m.oldKeys
@@ -239,8 +256,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
 			m.header.NotificationOK = tui.RunningMark
 
+			ctx, cancel := context.WithCancel(context.Background())
+			k8sCmd.Cancel = cancel
+			m.common.AddContextToStop(cancel)
 			m.k8sCmdList[k8sCmd.ID] = k8sCmd
-			cmd = tools.Kubectl(k8sCmd)
+			m.header.RunningCommands++
+			cmd = tools.Kubectl(ctx, k8sCmd)
 			return m, cmd
 		}
 
@@ -294,6 +315,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tools.ErrorMsg:
+		m.oldKeys = &tui.ListKeyMap{}
+		*m.oldKeys = *m.keys
+		m.keys.EnableErrorKeys()
 		cmd = m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.errorRaised = true
@@ -305,32 +329,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case *k8s.Cmd:
-		if msg.Canceled {
-			delete(m.k8sCmdList, msg.ID)
-			return m, nil
-		}
+		m.header.RunningCommands--
+		m.k8sCmdList[msg.ID].Done = true
+		m.header.NotificationOK = tui.CheckMark
+		m.k8sProgressMsg = ""
+		m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
 
-		switch msg.Verb {
-		case "apply", "delete":
-			m.k8sProgressMsg = ""
-			m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
-			m.header.NotificationOK = tui.CheckMark
-			msg.Done = true
-			return m, cmd
-
-		case "managed":
+		if msg.Verb == k8sManaged {
 			m.common.SetViewName(common.PK8S)
 			m.k8sCurrentIDView = msg.ID
-			m.k8sProgressMsg = ""
-			m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
-			m.header.NotificationOK = tui.CheckMark
-			msg.Done = true
 			if !m.tickRunning {
 				m.tickRunning = true
 				cmd = m.tickCmd()
 			}
-			return m, cmd
 		}
+		return m, cmd
 
 	case tickK8SGet:
 		if m.common.GetViewName() == common.PDialogBox {
@@ -341,7 +354,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.progressK8SGet.Percent() == 1.0 {
 				m.progressK8SGet.SetPercent(0)
 
-				kubectlCmd = tools.Kubectl(m.k8sCmdList[m.k8sCurrentIDView])
+				ctx, cancel := context.WithCancel(context.Background())
+				m.k8sCmdList[m.k8sCurrentIDView].Cancel = cancel
+				m.common.AddContextToStop(cancel)
+				m.header.RunningCommands++
+				kubectlCmd = tools.Kubectl(ctx, m.k8sCmdList[m.k8sCurrentIDView])
 			}
 
 			// Note that you can also use progress.Model.SetPercent to set the
