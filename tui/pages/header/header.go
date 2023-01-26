@@ -35,6 +35,7 @@ type Model struct {
 	width                  int
 	Notification           string
 	NotificationOK         string
+	RunningCommands        int
 	// errorPanel             errorpanel.Model
 	// errorRaised            bool
 	config config.Provider
@@ -156,13 +157,24 @@ func (m Model) View() string {
 	dependenciesStatus := strings.Builder{}
 
 	t := strings.Trim(m.Notification, "\n")
-	fmt.Fprintf(
-		&notification,
-		"%s %s %s",
-		tui.Divider,
-		t,
-		m.NotificationOK,
-	)
+	if m.RunningCommands > 0 {
+		fmt.Fprintf(
+			&notification,
+			"%s %s (%d r) %s",
+			tui.Divider,
+			t,
+			m.RunningCommands,
+			m.NotificationOK,
+		)
+	} else {
+		fmt.Fprintf(
+			&notification,
+			"%s %s %s",
+			tui.Divider,
+			t,
+			m.NotificationOK,
+		)
+	}
 
 	fmt.Fprintf(&dependenciesStatus, "")
 	if m.DependenciesStatus {

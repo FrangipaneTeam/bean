@@ -141,6 +141,8 @@ func (m ListKeyMap) FullHelp() [][]key.Binding {
 // EnableViewPortKeys is the set of keys for the viewport.
 func (m *ListKeyMap) EnableViewPortKeys() {
 	m.disableK8SKeys()
+	m.disableList()
+	m.disableMD()
 	m.Back.SetEnabled(true)
 	m.Select.SetEnabled(false)
 
@@ -150,13 +152,31 @@ func (m *ListKeyMap) EnableViewPortKeys() {
 	m.VpKM.PageDown.SetEnabled(true)
 	m.VpKM.HalfPageUp.SetEnabled(true)
 	m.VpKM.HalfPageDown.SetEnabled(true)
+	m.Back.SetEnabled(true)
+}
+
+func (m *ListKeyMap) disableList() {
 	m.UpDown.SetEnabled(false)
 	m.LeftRight.SetEnabled(false)
-	m.Back.SetEnabled(true)
 	m.ListKeyMap.Filter.SetEnabled(false)
+}
+
+func (m *ListKeyMap) enableList() {
+	m.UpDown.SetEnabled(true)
+	m.LeftRight.SetEnabled(true)
+	m.ListKeyMap.Filter.SetEnabled(true)
+}
+
+func (m *ListKeyMap) disableMD() {
 	m.ShowRessources.SetEnabled(false)
 	m.ShowTested.SetEnabled(false)
 	m.GenerateListTested.SetEnabled(false)
+}
+
+func (m *ListKeyMap) enableMD() {
+	m.ShowRessources.SetEnabled(true)
+	m.ShowTested.SetEnabled(true)
+	m.GenerateListTested.SetEnabled(true)
 }
 
 func (m *ListKeyMap) disableViewPortKeys() {
@@ -166,8 +186,6 @@ func (m *ListKeyMap) disableViewPortKeys() {
 	m.VpKM.PageDown.SetEnabled(false)
 	m.VpKM.HalfPageUp.SetEnabled(false)
 	m.VpKM.HalfPageDown.SetEnabled(false)
-	m.UpDown.SetEnabled(true)
-	m.LeftRight.SetEnabled(true)
 }
 
 func (m *ListKeyMap) enableK8SKeys() {
@@ -176,9 +194,8 @@ func (m *ListKeyMap) enableK8SKeys() {
 	m.Print.SetEnabled(true)
 	m.Get.SetEnabled(true)
 	m.ShowDependanciesFiles.SetEnabled(true)
-	m.ShowRessources.SetEnabled(false)
-	m.ShowTested.SetEnabled(false)
-	m.GenerateListTested.SetEnabled(false)
+	m.disableMD()
+	m.enableList()
 }
 
 func (m *ListKeyMap) disableK8SKeys() {
@@ -193,16 +210,12 @@ func (m *ListKeyMap) disableK8SKeys() {
 func (m *ListKeyMap) EnableRootKeys() {
 	m.disableK8SKeys()
 	m.disableViewPortKeys()
+	m.enableList()
+	m.enableMD()
 	m.Back.SetEnabled(false)
 	m.Select.SetEnabled(true)
 	m.Get.SetEnabled(true)
 	m.Help.SetEnabled(true)
-	m.UpDown.SetEnabled(true)
-	m.LeftRight.SetEnabled(true)
-	m.ListKeyMap.Filter.SetEnabled(true)
-	m.ShowRessources.SetEnabled(true)
-	m.ShowTested.SetEnabled(true)
-	m.GenerateListTested.SetEnabled(true)
 }
 
 // EnableKindListKeys is the set of keys for the kind list.
@@ -222,12 +235,10 @@ func (m *ListKeyMap) EnableKindListKeys() {
 func (m *ListKeyMap) EnablePrintK8SKeys() {
 	m.disableK8SKeys()
 	m.disableViewPortKeys()
+	m.disableList()
 	m.ShowDependanciesFiles.SetEnabled(true)
 	m.Back.SetEnabled(true)
 	m.Select.SetEnabled(false)
-	m.ListKeyMap.Filter.SetEnabled(false)
-	m.UpDown.SetEnabled(false)
-	m.LeftRight.SetEnabled(false)
 }
 
 // EnableDialogBoxKeys is the set of keys for the dialog box.
@@ -242,10 +253,20 @@ func (m *ListKeyMap) EnableDialogBoxKeys() {
 }
 
 func (m *ListKeyMap) EnableManagedKeys() {
+	m.disableList()
 	m.Get.SetEnabled(false)
 	m.Print.SetEnabled(false)
 	m.ShowDependanciesFiles.SetEnabled(false)
 	m.Select.SetEnabled(false)
 	m.Back.SetEnabled(true)
 	m.Help.SetEnabled(false)
+}
+
+func (m *ListKeyMap) EnableErrorKeys() {
+	m.disableMD()
+	m.disableList()
+	m.disableK8SKeys()
+	m.disableViewPortKeys()
+	m.Back.SetEnabled(true)
+	m.Select.SetEnabled(false)
 }

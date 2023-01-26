@@ -1,6 +1,8 @@
 package common
 
 import (
+	"context"
+
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,9 +18,10 @@ const (
 )
 
 type Model struct {
-	viewName    int
-	oldViewName int
-	keys        *tui.ListKeyMap
+	viewName      int
+	oldViewName   int
+	keys          *tui.ListKeyMap
+	contextToStop []context.CancelFunc
 }
 
 func New(keymap *tui.ListKeyMap) *Model {
@@ -39,6 +42,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Quit):
+			for _, cancel := range m.contextToStop {
+				cancel()
+			}
 			return m, tea.Quit
 		}
 	}
@@ -64,4 +70,14 @@ func (m *Model) GetOldViewName() int {
 // SetOldViewName sets the old view name.
 func (m *Model) SetOldViewName(name int) {
 	m.oldViewName = name
+}
+
+// AddContextToStop adds a context to stop.
+func (m *Model) AddContextToStop(ctx context.CancelFunc) {
+	m.contextToStop = append(m.contextToStop, ctx)
+}
+
+// ClearContextToStop clears the contexts to stop.
+func (m *Model) ClearContextToStop() {
+	m.contextToStop = nil
 }

@@ -116,6 +116,7 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	dialogKeys.EnableDialogBoxKeys()
 
 	// common model
+	k8sCmdList := make(map[string]*k8s.Cmd)
 	common := common.New(rootKeys)
 
 	return model{
@@ -134,6 +135,7 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 			dialogKeys,
 		),
 		k8s:          k8s.New(rootKeys, common),
+		k8sCmdList:   k8sCmdList,
 		common:       common,
 		width:        width - h,
 		height:       height - v,
@@ -146,7 +148,5 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 			progress.WithoutPercentage(),
 			progress.WithWidth(progressWidth),
 		),
-
-		k8sCmdList: make(map[string]*k8s.Cmd),
 	}
 }
