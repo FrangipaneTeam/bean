@@ -15,6 +15,7 @@ import (
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/pkg/crd"
 	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -35,21 +36,12 @@ type Markdown struct {
 	Content string
 }
 
-// ErrorMsg should be sent to notify a user of an unrecoverable error.
-type ErrorMsg struct {
-	Reason string
-	Cause  error
-	CmdID  string
-	Index  int
-	Item   *tui.Example
-}
-
 // RenderMarkdown renders a markdown file.
 func RenderMarkdown(file string, wrap int) tea.Cmd {
 	return func() tea.Msg {
 		f, err := os.ReadFile(file)
 		if err != nil {
-			return ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "could not read markdown file",
 				Cause:  err,
 			}
@@ -61,14 +53,14 @@ func RenderMarkdown(file string, wrap int) tea.Cmd {
 			glamour.WithStylePath("dracula"),
 		)
 		if err != nil {
-			return ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "new render markdown failed",
 				Cause:  err,
 			}
 		}
 		str, err := renderer.Render(string(f))
 		if err != nil {
-			return ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "render markdown failed",
 				Cause:  err,
 			}
@@ -84,10 +76,10 @@ func listDirExamples(path string) ([]os.DirEntry, error) {
 	return examplesList, err
 }
 
-func createExampleList(dir string) ([]*tui.Example, *ErrorMsg) {
+func createExampleList(dir string) ([]*tui.Example, *errorpanel.ErrorMsg) {
 	kindList, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, &ErrorMsg{
+		return nil, &errorpanel.ErrorMsg{
 			Reason: "could not read examples directory",
 			Cause:  err,
 		}
@@ -111,7 +103,7 @@ func createExampleList(dir string) ([]*tui.Example, *ErrorMsg) {
 			fmt.Sprintf("%s/%s", dir, sf.Name()),
 		)
 		if errReadFile != nil {
-			return nil, &ErrorMsg{
+			return nil, &errorpanel.ErrorMsg{
 				Reason: "could not read examples directory",
 				Cause:  errReadFile,
 			}
@@ -119,7 +111,7 @@ func createExampleList(dir string) ([]*tui.Example, *ErrorMsg) {
 		var k *tui.Example
 		err = yaml.Unmarshal(yfile, &k)
 		if err != nil {
-			return nil, &ErrorMsg{
+			return nil, &errorpanel.ErrorMsg{
 				Reason: "unmarshal error",
 				Cause:  err,
 			}
@@ -164,7 +156,7 @@ func createExampleList(dir string) ([]*tui.Example, *ErrorMsg) {
 	return exampleList, nil
 }
 
-func checkForExtraFile(dir string, file string) (int, *ErrorMsg) {
+func checkForExtraFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 	var (
 		extraK8S  *tui.Example
 		extraKind int
@@ -176,7 +168,7 @@ func checkForExtraFile(dir string, file string) (int, *ErrorMsg) {
 	if err == nil {
 		extraY, errSplitYaml := splitYAML(extraYFile)
 		if errSplitYaml != nil {
-			return extraKind, &ErrorMsg{
+			return extraKind, &errorpanel.ErrorMsg{
 				Reason: "split yaml error",
 				Cause:  errSplitYaml,
 			}
@@ -184,7 +176,7 @@ func checkForExtraFile(dir string, file string) (int, *ErrorMsg) {
 		for _, f := range extraY {
 			err = yaml.Unmarshal(f, &extraK8S)
 			if err != nil {
-				return extraKind, &ErrorMsg{
+				return extraKind, &errorpanel.ErrorMsg{
 					Reason: "unmarshal error",
 					Cause:  err,
 				}
@@ -195,7 +187,7 @@ func checkForExtraFile(dir string, file string) (int, *ErrorMsg) {
 	return extraKind, nil
 }
 
-func checkForSecretFile(dir string, file string) (int, *ErrorMsg) {
+func checkForSecretFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 	var (
 		extraK8S  *tui.Example
 		extraKind int
@@ -207,7 +199,7 @@ func checkForSecretFile(dir string, file string) (int, *ErrorMsg) {
 	if err == nil {
 		extraY, errSplitYaml := splitYAML(extraSFile)
 		if errSplitYaml != nil {
-			return extraKind, &ErrorMsg{
+			return extraKind, &errorpanel.ErrorMsg{
 				Reason: "split yaml error",
 				Cause:  errSplitYaml,
 			}
@@ -216,7 +208,7 @@ func checkForSecretFile(dir string, file string) (int, *ErrorMsg) {
 		for _, f := range extraY {
 			err = yaml.Unmarshal(f, &extraK8S)
 			if err != nil {
-				return extraKind, &ErrorMsg{
+				return extraKind, &errorpanel.ErrorMsg{
 					Reason: "unmarshal error",
 					Cause:  err,
 				}
@@ -231,7 +223,7 @@ func checkForSecretFile(dir string, file string) (int, *ErrorMsg) {
 func GenerateExamplesList(c config.Provider) tea.Msg {
 	examplesList, err := listDirExamples(c.Path)
 	if err != nil {
-		return ErrorMsg{
+		return errorpanel.ErrorMsg{
 			Reason: "could not read examples directory",
 			Cause:  err,
 		}
@@ -372,11 +364,11 @@ func (l *listTestedStruct) CheckIfTested(group, kind string) {
 func GenerateListTested(c config.Provider) tea.Msg {
 	crdS, err := crd.GetCRDs(c.Path + "/package/crds")
 	if err != nil {
-		return ErrorMsg{Reason: "can't get crds", Cause: err}
+		return errorpanel.ErrorMsg{Reason: "can't get crds", Cause: err}
 	}
 	examples := GenerateExamplesList(c)
 	switch ex := examples.(type) {
-	case ErrorMsg:
+	case errorpanel.ErrorMsg:
 		log.Print(ex.Cause.Error())
 		os.Exit(1)
 

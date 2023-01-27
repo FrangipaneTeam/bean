@@ -25,10 +25,21 @@ type Model struct {
 	cause         string
 	width, height int
 	spinner       spinner.Model
+	errorRaised   bool
+}
+
+// ErrorMsg should be sent to notify a user of an unrecoverable error.
+type ErrorMsg struct {
+	Reason   string
+	Cause    error
+	CmdID    string
+	Index    int
+	Item     *tui.Example
+	FromPage interface{}
 }
 
 // New returns a new model of the error panel.
-func New(w, h int) Model {
+func New(w, h int) *Model {
 	s := spinner.New()
 	s.Spinner = spinner.Spinner{
 		Frames: []string{
@@ -58,7 +69,7 @@ func New(w, h int) Model {
 	}
 	s.Style = lipgloss.NewStyle().Foreground(tui.RedColour).Bold(true)
 
-	return Model{
+	return &Model{
 		spinner: s,
 		width:   w,
 		height:  h,
@@ -71,7 +82,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 // Update updates the model.
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.spinner, cmd = m.spinner.Update(msg)
 	return m, cmd
@@ -107,13 +118,24 @@ func (m Model) View() string {
 }
 
 // RaiseError raises an error.
-func (m Model) RaiseError(reason string, cause error) Model {
+func (m *Model) RaiseError(reason string, cause error) *Model {
+	m.errorRaised = true
 	m.reason = reason
 	if cause != nil {
 		m.cause = cause.Error()
 	}
 
 	return m
+}
+
+// ErrorRaised returns true if an error has been raised.
+func (m Model) ErrorRaised() bool {
+	return m.errorRaised
+}
+
+// Clear clears the error.
+func (m *Model) Clear() {
+	m.errorRaised = false
 }
 
 // Resize resizes the model.

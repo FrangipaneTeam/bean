@@ -9,6 +9,7 @@ import (
 
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/tools"
+	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dietsche/rfsnotify"
 	"gopkg.in/fsnotify.v1"
@@ -43,7 +44,7 @@ func ListenForCRDActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 	return func() tea.Msg {
 		watcher, err := newWatcher()
 		if err != nil {
-			return tools.ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "NewWatcher error",
 				Cause:  err,
 			}
@@ -55,7 +56,7 @@ func ListenForCRDActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 
 		err = addCRDFolder(watcher, c.Path)
 		if err != nil {
-			return tools.ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "NewWatcher error",
 				Cause:  err,
 			}
@@ -76,7 +77,7 @@ func watchCRDFiles(watcher *fsnotify.Watcher, done chan bool, ch chan NotifyActi
 		select {
 		case event, ok := <-watcher.Events:
 			if !ok {
-				return tools.ErrorMsg{
+				return errorpanel.ErrorMsg{
 					Reason: "NewWatcher error",
 					Cause:  errors.New("event not ok"),
 				}
@@ -89,7 +90,7 @@ func watchCRDFiles(watcher *fsnotify.Watcher, done chan bool, ch chan NotifyActi
 			}
 		case errWatcher, ok := <-watcher.Errors:
 			if !ok {
-				return tools.ErrorMsg{
+				return errorpanel.ErrorMsg{
 					Reason: "NewWatcher error",
 					Cause:  errWatcher,
 				}
@@ -107,7 +108,7 @@ func ListenForExamplesActivity(ch chan NotifyActivity, c config.Provider) tea.Cm
 	return func() tea.Msg {
 		watcher, err := newRecursiveWatcher()
 		if err != nil {
-			return tools.ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "NewWatcher error",
 				Cause:  err,
 			}
@@ -119,7 +120,7 @@ func ListenForExamplesActivity(ch chan NotifyActivity, c config.Provider) tea.Cm
 
 		err = addExamplesFolder(watcher, c.Path)
 		if err != nil {
-			return tools.ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "NewWatcher error",
 				Cause:  err,
 			}

@@ -14,6 +14,7 @@ import (
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
+	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -27,8 +28,7 @@ const (
 	k8sApply   = "apply"
 	k8sManaged = "managed"
 
-	k8sProgressIncrement     = 0.1
-	progressWidth        int = 10
+	k8sProgressIncrement = 0.1
 )
 
 func randSeq(n int) string {
@@ -66,30 +66,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-
 		case key.Matches(msg, m.keys.Back):
-			m.tickRunning = false
-
-			// back to the list, cancel all k8sCmd
-			for _, v := range m.k8sCmdList {
-				v.Cancel()
-			}
-
-			m.common.ClearContextToStop()
-			m.header.RunningCommands = 0
-
-			m.k8sCmdList = make(map[string]*k8s.Cmd)
-
-			cmd = m.progressK8SGet.SetPercent(0)
-			cmds = append(cmds, cmd)
-
-			m.pages.RestorePreviousKeys()
-			cmdView := m.pages.RestorePreviousView()
-			cmds = append(cmds, cmdView)
-			// error handling
-			if m.errorRaised {
-				m.errorRaised = false
-			}
+			m.common, cmds = m.common.Back()
 			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, m.keys.Select):
@@ -120,7 +98,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					ctx, cancel := context.WithCancel(context.Background())
 					k8sCmd.Cancel = cancel
 					m.common.AddContextToStop(cancel)
-					m.k8sCmdList[k8sCmd.ID] = k8sCmd
+					m.k8s.CmdList[k8sCmd.ID] = k8sCmd
 					cmd = k8s.Kubectl(ctx, k8sCmd)
 
 					m.pages.RestorePreviousKeys()
@@ -187,12 +165,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply):
-			// TODO: in witch case m.currentList.SelectedItem() == nil ?
 			var k8sCmd *k8s.Cmd
 			m, k8sCmd, cmd = m.generateK8SFiles()
 			if cmd != nil {
 				return m, cmd
 			}
+			k8sCmd.FromPage = m.pages.GetViewName()
 
 			switch {
 			case key.Matches(msg, m.keys.Get):
@@ -222,14 +200,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ctx, cancel := context.WithCancel(context.Background())
 			k8sCmd.Cancel = cancel
 			m.common.AddContextToStop(cancel)
-			m.k8sCmdList[k8sCmd.ID] = k8sCmd
-			m.header.RunningCommands++
+			m.k8s.CmdList[k8sCmd.ID] = k8sCmd
+			// m.header.RunningCommands++
 			cmd = k8s.Kubectl(ctx, k8sCmd)
 			return m, cmd
 		}
 
 	case tea.WindowSizeMsg:
-		// m.header.Notification = "resizing"
 		headerHeight := m.header.Height()
 		footerHeight := m.footer.Height()
 
@@ -246,7 +223,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.dialogbox.SetSize(m.width, centerH)
 		m.errorPanel.SetSize(m.width, centerH)
 		m.markdown.SetSize(m.width, centerH)
-		// m.header.NotificationOK = tui.CheckMark
 		return m, nil
 
 	case k8s.Message:
@@ -275,14 +251,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
 		return m, cmd
 
-	case tools.ErrorMsg:
-		m.oldKeys = &tui.ListKeyMap{}
-		*m.oldKeys = *m.keys
-		m.keys.EnableErrorKeys()
+	case errorpanel.ErrorMsg:
 		cmd = m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
-		m.errorRaised = true
 		m.header.NotificationOK = tui.ErrorMark
+		m.pages.SetPreviousViewName(pages.PError, msg.FromPage.(pages.PageID))
+		m.pages.SetViewName(pages.PError)
+		if m.config.Debug {
+			m.header.Notification = fmt.Sprintf("from %s", msg.FromPage.(pages.PageID))
+		}
 		return m, cmd
 
 	case tui.ListTestedDone:
@@ -290,17 +267,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case *k8s.Cmd:
-		m.header.RunningCommands--
-		m.k8sCmdList[msg.ID].Done = true
+		// m.header.RunningCommands--
+		delete(m.k8s.CmdList, msg.ID)
 		m.header.NotificationOK = tui.CheckMark
 		m.k8sProgressMsg = ""
 		m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
 
 		if msg.Verb == k8sManaged {
-			// m.pages.SetViewName(pages.PK8SGet)
 			m.k8sCurrentIDView = msg.ID
-			if !m.tickRunning {
-				m.tickRunning = true
+			if !m.k8s.IsTickRunning() {
+				m.k8s.SetTickRunning(true)
 				cmd = m.tickCmd()
 			}
 		}
@@ -310,29 +286,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.pages.GetViewName() == pages.PDialogBox {
 			return m, nil
 		}
-		if m.tickRunning {
+		if m.k8s.IsTickRunning() {
 			var kubectlCmd tea.Cmd
-			if m.progressK8SGet.Percent() == 1.0 {
-				m.progressK8SGet.SetPercent(0)
+			if m.k8s.GetProgress.Percent() == 1.0 {
+				m.k8s.GetProgress.SetPercent(0)
 
 				ctx, cancel := context.WithCancel(context.Background())
-				m.k8sCmdList[m.k8sCurrentIDView].Cancel = cancel
+				m.k8s.CmdList[m.k8sCurrentIDView].Cancel = cancel
 				m.common.AddContextToStop(cancel)
-				m.header.RunningCommands++
-				kubectlCmd = k8s.Kubectl(ctx, m.k8sCmdList[m.k8sCurrentIDView])
+				// m.header.RunningCommands++
+				kubectlCmd = k8s.Kubectl(ctx, m.k8s.CmdList[m.k8sCurrentIDView])
 			}
 
 			// Note that you can also use progress.Model.SetPercent to set the
 			// percentage value explicitly, too.
-			cmd = m.progressK8SGet.IncrPercent(k8sProgressIncrement)
+			cmd = m.k8s.GetProgress.IncrPercent(k8sProgressIncrement)
 			return m, tea.Batch(m.tickCmd(), cmd, kubectlCmd)
 		}
 
 	// FrameMsg is sent when the progress bar wants to animate itself
 	case progress.FrameMsg:
 		var progressModel tea.Model
-		progressModel, cmd = m.progressK8SGet.Update(msg)
-		m.progressK8SGet = progressModel.(progress.Model)
+		progressModel, cmd = m.k8s.GetProgress.Update(msg)
+		m.k8s.GetProgress = progressModel.(progress.Model)
 		return m, cmd
 	}
 
@@ -343,13 +319,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmdList)
 	}
 
+	m.k8s, cmd = m.k8s.Update(msg)
+	cmds = append(cmds, cmd)
+
 	m.header, cmd = m.header.Update(msg)
 	cmds = append(cmds, cmd)
 
 	m.footer, cmd = m.footer.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if m.errorRaised {
+	if m.errorPanel.ErrorRaised() {
 		m.errorPanel, cmd = m.errorPanel.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -359,9 +338,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
 		cmds = append(cmds, cmd)
 	}
-
-	m.k8s, cmd = m.k8s.Update(msg)
-	cmds = append(cmds, cmd)
 
 	if m.pages.GetViewName() == pages.PDialogBox {
 		m.dialogbox, cmd = m.dialogbox.Update(msg)
@@ -396,7 +372,7 @@ func (m model) View() string {
 		footer.WriteString(m.footer.View())
 	}
 
-	if m.errorRaised {
+	if m.errorPanel.ErrorRaised() {
 		center.WriteString(m.errorPanel.View())
 	} else {
 		switch m.pages.GetViewName() {
@@ -407,7 +383,7 @@ func (m model) View() string {
 			center.WriteString(m.markdown.Viewport.View())
 
 		case pages.PK8SGet, pages.PK8SGetFromRoot:
-			cmd := m.k8sCmdList[m.k8sCurrentIDView]
+			cmd := m.k8s.CmdList[m.k8sCurrentIDView]
 			getOutput := "loading..."
 			if cmd.Done {
 				getOutput = cmd.Result
@@ -424,7 +400,7 @@ func (m model) View() string {
 			reloadHeight := lipgloss.Height(reloadOutput)
 
 			boxHeight := m.centerHeight - hHeight - reloadHeight - 4
-			reloadOutput = fmt.Sprintf("%s reloading... %s", m.progressK8SGet.View(), m.k8sProgressMsg)
+			reloadOutput = fmt.Sprintf("%s reloading... %s", m.k8s.GetProgress.View(), m.k8sProgressMsg)
 			reloadOutput = lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Margin(1, 0, 1, 0).Render(reloadOutput)
 			cmdResult := lipgloss.NewStyle().Width(m.width - 2).MaxWidth(m.width).MaxHeight(boxHeight - 2).Padding(1).Render(getOutput)
 			getOutput = lipgloss.NewStyle().Width(m.width - 2).Height(boxHeight).Border(lipgloss.RoundedBorder()).Render(cmdResult)
@@ -487,7 +463,7 @@ func (m model) View() string {
 
 func (m model) tickCmd() tea.Cmd {
 	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
-		if !m.tickRunning {
+		if !m.k8s.IsTickRunning() {
 			return nil
 		}
 		return tickK8SGet(t)
@@ -518,7 +494,6 @@ func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
 			"no item selected, empty list ?",
 			errors.New("m.currentList.SelectedItem() == nil"),
 		)
-		m.errorRaised = true
 		m.header.NotificationOK = tui.ErrorMark
 		return m, nil, cmd
 	}

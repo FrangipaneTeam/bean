@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -13,44 +12,13 @@ import (
 	"github.com/charmbracelet/glamour"
 )
 
-// Model is the model of the error panel.
-type Model struct {
-	pages *pages.Model
-	tea.Model
-	keys  *tui.ListKeyMap
-	width int
-}
-
-type Message struct {
-	ShowDialogBox bool
-	PreviousPage  pages.PageID
-}
-
-type Cmd struct {
-	ID     string
-	Done   bool
-	Verb   string
-	Files  []string
-	Kind   string
-	Result string
-	Cancel context.CancelFunc
-}
-
 // Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// New returns a new model of the k8s page.
-func New(keymap *tui.ListKeyMap, pages *pages.Model) Model {
-	return Model{
-		keys:  keymap,
-		pages: pages,
-	}
-}
-
 // Update updates the model.
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -137,4 +105,19 @@ func (m Model) View() string {
 
 func (k8sCmd *Cmd) JoinedFiles() string {
 	return strings.Join(k8sCmd.Files, ",")
+}
+
+// IsTickRunning returns true if the tick is running.
+func (m Model) IsTickRunning() bool {
+	return m.tickRunning
+}
+
+// SetTickRunning sets the tick running state.
+func (m *Model) SetTickRunning(state bool) {
+	m.tickRunning = state
+}
+
+// GetRunningCmd returns the running command.
+func (m Model) GetRunningCmd() int {
+	return len(m.CmdList)
 }

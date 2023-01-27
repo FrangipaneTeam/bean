@@ -5,6 +5,9 @@ import (
 
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
+	"github.com/FrangipaneTeam/bean/tui/pages/header"
+	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,13 +17,24 @@ type Model struct {
 	keys          *tui.ListKeyMap
 	contextToStop []context.CancelFunc
 	pages         *pages.Model
+	header        *header.Model
+	errorPanel    *errorpanel.Model
+	k8s           *k8s.Model
 }
 
-func New(pages *pages.Model) *Model {
+func New(
+	pages *pages.Model,
+	header *header.Model,
+	errorpanel *errorpanel.Model,
+	k8s *k8s.Model,
+) *Model {
 	return &Model{
 		keys:          tui.NewListKeyMap(),
 		contextToStop: []context.CancelFunc{},
 		pages:         pages,
+		header:        header,
+		errorPanel:    errorpanel,
+		k8s:           k8s,
 	}
 }
 

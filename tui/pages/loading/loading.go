@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/FrangipaneTeam/bean/config"
-	"github.com/FrangipaneTeam/bean/tools"
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
@@ -22,7 +21,7 @@ type model struct {
 	quitting      bool
 	err           error
 	width, height int
-	errorPanel    errorpanel.Model
+	errorPanel    *errorpanel.Model
 	errorRaised   bool
 	config        config.Provider
 }
@@ -70,9 +69,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = e.Init()
 		return e, cmd
 
-	case *tools.ErrorMsg:
+	case *errorpanel.ErrorMsg:
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
-		m.errorRaised = true
 		cmd = m.errorPanel.Init()
 		return m, cmd
 
