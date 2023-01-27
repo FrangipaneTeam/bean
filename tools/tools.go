@@ -3,13 +3,11 @@ package tools
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -17,7 +15,6 @@ import (
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/pkg/crd"
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -45,75 +42,6 @@ type ErrorMsg struct {
 	CmdID  string
 	Index  int
 	Item   *tui.Example
-}
-
-// Kubectl runs a kubectl command.
-func Kubectl(ctx context.Context, k8sCmd *k8s.Cmd) tea.Cmd {
-	return func() tea.Msg {
-		if k8sCmd.Verb == "" || len(k8sCmd.Files) == 0 {
-			return ErrorMsg{
-				Reason: "no verb or files provided",
-				Cause: fmt.Errorf(
-					"verb : %s - files : %d", k8sCmd.Verb, len(k8sCmd.Files),
-				),
-			}
-		}
-
-		var args []string
-		switch k8sCmd.Verb {
-		case "managed":
-			args = []string{"get", "managed"}
-		case "apply":
-			args = []string{k8sCmd.Verb, "-f", k8sCmd.JoinedFiles()}
-		case "delete":
-			args = []string{k8sCmd.Verb, "--wait=false", "-f", k8sCmd.JoinedFiles()}
-		}
-
-		cmdChan := make(chan interface{})
-		defer close(cmdChan)
-
-		go func() {
-			// cmd := exec.CommandContext(ctx, "sleep", "300")
-			cmd := exec.CommandContext(ctx, "kubectl", args...)
-			var stdout, stderr bytes.Buffer
-			cmd.Stdout = &stdout
-			cmd.Stderr = &stderr
-			err := cmd.Run()
-			if err != nil {
-				if ctx.Err() == nil {
-					cmdChan <- errors.New(stderr.String())
-				}
-				return
-			}
-			if ctx.Err() == nil {
-				cmdChan <- stdout.String()
-			}
-		}()
-
-		select {
-		case cmdResult := <-cmdChan:
-			switch result := cmdResult.(type) {
-			case error:
-				if result != nil {
-					return ErrorMsg{
-						Reason: fmt.Sprintf("command kubectl %s failed", strings.Join(args, " ")),
-						Cause:  result,
-						CmdID:  k8sCmd.ID,
-					}
-				}
-			case string:
-				k8sCmd.Result = result
-			}
-
-		case <-ctx.Done():
-			return ErrorMsg{
-				Reason: "context done",
-				Cause:  errors.New("cancel kubectl command"),
-			}
-		}
-
-		return k8sCmd
-	}
 }
 
 // RenderMarkdown renders a markdown file.
@@ -202,7 +130,8 @@ func createExampleList(dir string) ([]*tui.Example, *ErrorMsg) {
 			continue
 		}
 
-		k.FileName = dir + "/" + sf.Name()
+		k.FullPath = dir + "/" + sf.Name()
+		k.FileName = sf.Name()
 		k.Desc = k.Kind + " → " + k.APIVersion
 		k.ExampleID = strings.ToLower(fmt.Sprintf("%s.%s", k.Kind, k.APIVersion))
 
@@ -329,6 +258,7 @@ func GenerateExamplesList(c config.Provider) tea.Msg {
 
 		e := &tui.Example{
 			FileName: dirName,
+			FullPath: dirName,
 			Desc:     fmt.Sprintf("%d examples", len(s.Examples[dirName])),
 		}
 		rootExamples = append(rootExamples, e)

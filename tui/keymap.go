@@ -37,8 +37,8 @@ type ListKeyMap struct {
 func NewListKeyMap() *ListKeyMap {
 	return &ListKeyMap{
 		Quit: key.NewBinding(
-			key.WithKeys("q", "esc"),
-			key.WithHelp("q/esc", "quit"),
+			key.WithKeys("q"),
+			key.WithHelp("q", "quit"),
 		),
 		UpDown: key.NewBinding(
 			key.WithKeys("up", "down"),
@@ -252,13 +252,25 @@ func (m *ListKeyMap) EnableDialogBoxKeys() {
 	m.Select.SetEnabled(true)
 }
 
-func (m *ListKeyMap) EnableManagedKeys() {
+func (m *ListKeyMap) EnableGetRootKeys() {
 	m.disableList()
-	m.Get.SetEnabled(false)
-	m.Print.SetEnabled(false)
-	m.ShowDependanciesFiles.SetEnabled(false)
+	m.disableK8SKeys()
+	m.disableViewPortKeys()
+	// m.Get.SetEnabled(false)
+	// m.Print.SetEnabled(false)
+	// m.ShowDependanciesFiles.SetEnabled(false)
 	m.Select.SetEnabled(false)
-	m.Back.SetEnabled(true)
+	// m.Back.SetEnabled(true)
+	m.Help.SetEnabled(false)
+}
+
+func (m *ListKeyMap) EnableGetKeys() {
+	m.enableList()
+	m.disableK8SKeys()
+	m.disableViewPortKeys()
+	m.Apply.SetEnabled(true)
+	m.Delete.SetEnabled(true)
+	m.Select.SetEnabled(false)
 	m.Help.SetEnabled(false)
 }
 
@@ -269,4 +281,5 @@ func (m *ListKeyMap) EnableErrorKeys() {
 	m.disableViewPortKeys()
 	m.Back.SetEnabled(true)
 	m.Select.SetEnabled(false)
+	m.Help.SetEnabled(false)
 }

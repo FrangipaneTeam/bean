@@ -36,6 +36,7 @@ var (
 // Execute executes the root command.
 func Execute(version string) {
 	rootCmd.PersistentFlags().StringVarP(&c.Path, "path", "p", ".", "your provider path")
+	rootCmd.PersistentFlags().BoolVarP(&c.Debug, "debug", "d", false, "debug mode")
 	rootCmd.AddCommand(listTestedCmd)
 	c.Version = version
 

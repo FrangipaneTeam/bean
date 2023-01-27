@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 
@@ -18,6 +19,7 @@ var (
 // Example is a struct that holds the details of an example.
 type Example struct {
 	FileName        string
+	FullPath        string
 	ExampleID       string
 	Desc            string
 	ExtraFileExist  bool
@@ -57,6 +59,9 @@ type ExamplesDetails map[string]*Example
 // Title returns the title of the example.
 func (e Example) Title() string { return e.FileName }
 
+// FileWithPath returns the file with path of the example.
+func (e Example) FileWithPath() string { return e.FullPath }
+
 // Description returns the description of the example.
 func (e Example) Description() string { return e.Desc }
 
@@ -78,8 +83,9 @@ func (e Example) GetExampleID() string { return e.ExampleID }
 // DependenciesFilesList returns a list of dependencies files.
 func (e Example) DependenciesFilesList() []string {
 	list := []string{}
+	filePath := filepath.Dir(e.FullPath)
 	for k := range e.DependenciesFiles {
-		list = append(list, k)
+		list = append(list, filePath+"/"+k)
 	}
 
 	sort.Strings(list)

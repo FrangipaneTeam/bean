@@ -6,4 +6,5 @@ type Provider struct {
 	Path       string
 	Version    string
 	NewVersion string
+	Debug      bool
 }

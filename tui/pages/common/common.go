@@ -4,30 +4,23 @@ import (
 	"context"
 
 	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/tui/pages"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-const (
-	PViewPort int = iota
-	PRoot
-	PRessources
-	PPrintActions
-	PK8S
-	PDialogBox
-)
-
 type Model struct {
-	viewName      int
-	oldViewName   int
 	keys          *tui.ListKeyMap
 	contextToStop []context.CancelFunc
+	pages         *pages.Model
 }
 
-func New(keymap *tui.ListKeyMap) *Model {
+func New(pages *pages.Model) *Model {
 	return &Model{
-		viewName: PRoot,
-		keys:     keymap,
+		keys:          tui.NewListKeyMap(),
+		contextToStop: []context.CancelFunc{},
+		pages:         pages,
 	}
 }
 
@@ -40,6 +33,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.pages.CurrentList.FilterState() == list.Filtering {
+			break
+		}
 		switch {
 		case key.Matches(msg, m.keys.Quit):
 			for _, cancel := range m.contextToStop {
@@ -52,26 +48,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// SetView sets the view name.
-func (m *Model) SetViewName(name int) {
-	m.viewName = name
-}
-
-// GetView returns the view name.
-func (m *Model) GetViewName() int {
-	return m.viewName
-}
-
-// GetOldViewName returns the old view name.
-func (m *Model) GetOldViewName() int {
-	return m.oldViewName
-}
-
-// SetOldViewName sets the old view name.
-func (m *Model) SetOldViewName(name int) {
-	m.oldViewName = name
-}
-
 // AddContextToStop adds a context to stop.
 func (m *Model) AddContextToStop(ctx context.CancelFunc) {
 	m.contextToStop = append(m.contextToStop, ctx)
@@ -79,5 +55,5 @@ func (m *Model) AddContextToStop(ctx context.CancelFunc) {
 
 // ClearContextToStop clears the contexts to stop.
 func (m *Model) ClearContextToStop() {
-	m.contextToStop = nil
+	m.contextToStop = []context.CancelFunc{}
 }

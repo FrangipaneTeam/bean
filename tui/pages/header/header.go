@@ -31,7 +31,6 @@ type Model struct {
 	activityFrom           interface{}
 	notifyCrds             chan pages.NotifyActivity
 	notifyExamples         chan pages.NotifyActivity
-	DependenciesStatus     bool
 	width                  int
 	Notification           string
 	NotificationOK         string
@@ -39,6 +38,7 @@ type Model struct {
 	// errorPanel             errorpanel.Model
 	// errorRaised            bool
 	config config.Provider
+	pages  *pages.Model
 }
 
 // Init initializes the model.
@@ -60,16 +60,16 @@ func New(title string, desc string, w int, c config.Provider) Model {
 	s.Style = lipgloss.NewStyle().Foreground(tui.SpinnerColour)
 
 	return Model{
-		Title:              title,
-		Description:        desc,
-		Notification:       "ready",
-		NotificationOK:     tui.RunningMark,
-		spinner:            s,
-		notifyCrds:         make(chan pages.NotifyActivity),
-		notifyExamples:     make(chan pages.NotifyActivity),
-		width:              w,
-		config:             c,
-		DependenciesStatus: true,
+		Title:          title,
+		Description:    desc,
+		Notification:   "ready",
+		NotificationOK: tui.RunningMark,
+		spinner:        s,
+		notifyCrds:     make(chan pages.NotifyActivity),
+		notifyExamples: make(chan pages.NotifyActivity),
+		width:          w,
+		config:         c,
+		pages:          &pages.Model{ShowDependenciesFiles: true},
 	}
 }
 
@@ -177,7 +177,7 @@ func (m Model) View() string {
 	}
 
 	fmt.Fprintf(&dependenciesStatus, "")
-	if m.DependenciesStatus {
+	if m.pages.GetDependenciesStatus() {
 		fmt.Fprintf(
 			&dependenciesStatus,
 			"%s dependencies %s",
@@ -231,4 +231,9 @@ func (m Model) Width() int {
 // SetWidth set the width of the view.
 func (m *Model) SetWidth(w int) {
 	m.width = w
+}
+
+// SetPagesModel set the pages model.
+func (m *Model) SetPagesModel(p *pages.Model) {
+	m.pages = p
 }
