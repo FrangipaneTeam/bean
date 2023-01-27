@@ -14,15 +14,6 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
-// Model is the model of the pages.
-type Model interface {
-	tea.Model
-
-	Resize(width, height int) Model
-	Width() int
-	Height() int
-}
-
 // NotifyActivity is a struct that holds the name of the file that was changed.
 type NotifyActivity struct {
 	FileName string

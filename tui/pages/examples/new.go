@@ -6,6 +6,7 @@ import (
 
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/tui/pages"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
@@ -13,21 +14,14 @@ import (
 	"github.com/FrangipaneTeam/bean/tui/pages/header"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/FrangipaneTeam/bean/tui/pages/md"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
-	exampleList map[string][]list.Item
-	currentList list.Model
-
-	listName      string
 	width, height int
 	keys          *tui.ListKeyMap
 	oldKeys       *tui.ListKeyMap
-
-	showDependenciesFiles bool
 
 	errorRaised bool
 
@@ -52,6 +46,9 @@ type model struct {
 	dialogbox dialogbox.Model
 
 	k8sCmdList map[string]*k8s.Cmd
+
+	pages     *pages.Model
+	pagesList map[pages.PageID]*pages.Page
 }
 
 type tickK8SGet time.Time
@@ -62,34 +59,6 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 
 	rootKeys := tui.NewListKeyMap()
 	dialogKeys := tui.NewListKeyMap()
-	delegate := list.NewDefaultDelegate()
-
-	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightColour).
-		Bold(true)
-
-	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightFeintColour)
-
-	delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.
-		Foreground(tui.FeintColour)
-
-	delegate.Styles.FilterMatch = lipgloss.NewStyle().
-		Underline(true).
-		Bold(true)
-
-	list := list.New(e.Examples["-"],
-		delegate,
-		width,
-		height,
-	)
-	list.Title = "Choose an example"
-	list.DisableQuitKeybindings()
-	list.SetShowHelp(false)
-	list.SetStatusBarItemName("example", "examples")
-
 	version := lipgloss.NewStyle().Foreground(tui.NotificationColour).Render("v" + c.Version)
 	if c.NewVersion != "" {
 		newVersion := lipgloss.NewStyle().
@@ -109,24 +78,23 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	headerHeight := header.Height()
 	footerHeight := footer.Height()
 
-	list.SetSize(width-h, height-v-headerHeight-footerHeight)
-
 	// default activated keys
 	rootKeys.EnableRootKeys()
 	dialogKeys.EnableDialogBoxKeys()
 
 	// common model
 	k8sCmdList := make(map[string]*k8s.Cmd)
-	common := common.New(rootKeys)
+	pagesModel := pages.New(rootKeys, e, width-h, height-v-headerHeight-footerHeight)
+	header.SetPagesModel(pagesModel)
+
+	common := common.New(pagesModel)
 
 	return model{
-		exampleList: e.Examples,
-		currentList: list,
-		listName:    "-",
+		keys:   rootKeys,
+		header: header,
+		footer: footer,
+		common: common,
 
-		keys:       rootKeys,
-		header:     header,
-		footer:     footer,
 		errorPanel: errorpanel.New(width-h, height-v-headerHeight-footerHeight),
 		markdown:   md.New(width-h, height-v-headerHeight-footerHeight),
 		dialogbox: dialogbox.New(
@@ -134,15 +102,14 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 			height-v-headerHeight-footerHeight,
 			dialogKeys,
 		),
-		k8s:          k8s.New(rootKeys, common),
+		k8s:          k8s.New(rootKeys, pagesModel),
 		k8sCmdList:   k8sCmdList,
-		common:       common,
 		width:        width - h,
 		height:       height - v,
 		centerHeight: height - v - headerHeight - footerHeight,
 		config:       c,
-
-		showDependenciesFiles: true,
+		pages:        pagesModel,
+		pagesList:    pages.BeanPages(),
 		progressK8SGet: progress.New(
 			progress.WithSolidFill("#CBEDD5"),
 			progress.WithoutPercentage(),

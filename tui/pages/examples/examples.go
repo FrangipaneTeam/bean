@@ -13,14 +13,12 @@ import (
 	"github.com/FrangipaneTeam/bean/tools"
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages"
-	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -63,14 +61,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Is it a key press?
 	case tea.KeyMsg:
 		// Don't match any of the keys below if we're actively filtering.
-		if m.currentList.FilterState() == list.Filtering {
+		if m.pages.CurrentList.FilterState() == list.Filtering {
 			break
 		}
 
 		switch {
 
 		case key.Matches(msg, m.keys.Back):
-			m.errorRaised = false
 			m.tickRunning = false
 
 			// back to the list, cancel all k8sCmd
@@ -86,108 +83,74 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.progressK8SGet.SetPercent(0)
 			cmds = append(cmds, cmd)
 
+			m.pages.RestorePreviousKeys()
+			cmdView := m.pages.RestorePreviousView()
+			cmds = append(cmds, cmdView)
 			// error handling
 			if m.errorRaised {
 				m.errorRaised = false
-				*m.keys = *m.oldKeys
-				return m, nil
 			}
-
-			switch view := m.common.GetViewName(); view {
-			case common.PRessources:
-				m, cmd = m.rootView()
-				return m, cmd
-
-			case common.PViewPort:
-				m.common.SetViewName(common.PRoot)
-				m.keys.EnableRootKeys()
-				return m, cmd
-
-			case common.PPrintActions, common.PK8S, common.PDialogBox:
-				if view == common.PK8S && !m.keys.Apply.Enabled() {
-					m, cmd = m.rootView()
-					return m, cmd
-				}
-
-				m.keys.EnableKindListKeys()
-				m.common.SetViewName(common.PRessources)
-				cmd = m.currentList.NewStatusMessage("back to " + m.listName)
-				cmds = append(cmds, cmd)
-				m, cmd = m.showYaml(m.listName)
-			}
-
-			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, m.keys.Select):
-
-			switch view := m.common.GetViewName(); view {
-			case common.PDialogBox:
-				var newModel model
+			switch view := m.pages.GetViewName(); view {
+			case pages.PDialogBox:
 				var k8sCmd *k8s.Cmd
 
 				if m.dialogbox.ActiveButton == dialogbox.GetCancelValue() {
-					newModel = m
-					newModel.header.Notification = "cancel delete"
-					newModel.header.NotificationOK = tui.ErrorMark
-					newModel.common.SetViewName(m.common.GetOldViewName())
-					*newModel.keys = *m.oldKeys
+					m.header.Notification = "cancel delete"
+					m.header.NotificationOK = tui.ErrorMark
+					m.pages.RestorePreviousKeys()
+					m.pages.RestorePreviousView()
 				} else {
 					m.header.NotificationOK = tui.RunningMark
-					newModel, k8sCmd, cmd = m.generateK8SFiles()
+					m, k8sCmd, cmd = m.generateK8SFiles()
 					if cmd != nil {
-						newModel.common.SetViewName(m.common.GetOldViewName())
-						*newModel.keys = *m.oldKeys
-						return newModel, cmd
+						m.pages.RestorePreviousKeys()
+						m.pages.RestorePreviousView()
+						return m, cmd
 					}
 
-					newModel.k8sProgressMsg = "delete sent !"
+					m.k8sProgressMsg = "delete sent !"
 					k8sCmd.Verb = k8sDelete
 
-					newModel.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
-					newModel.header.NotificationOK = tui.RunningMark
+					m.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
+					m.header.NotificationOK = tui.RunningMark
 
 					ctx, cancel := context.WithCancel(context.Background())
 					k8sCmd.Cancel = cancel
 					m.common.AddContextToStop(cancel)
 					m.k8sCmdList[k8sCmd.ID] = k8sCmd
-					cmd = tools.Kubectl(ctx, k8sCmd)
+					cmd = k8s.Kubectl(ctx, k8sCmd)
 
-					newModel.common.SetViewName(m.common.GetOldViewName())
-					*newModel.keys = *m.oldKeys
+					m.pages.RestorePreviousKeys()
+					m.pages.RestorePreviousView()
 
 					cmds = append(cmds, cmd)
 				}
 
-				if newModel.common.GetViewName() == common.PK8S {
+				if m.pages.GetViewName() == pages.PK8SGet || m.pages.GetViewName() == pages.PK8SGetFromRoot {
 					cmds = append(cmds, m.tickCmd())
 				}
 
-				return newModel, tea.Batch(cmds...)
+				return m, tea.Batch(cmds...)
 
-			case common.PRoot:
-				title := m.currentList.SelectedItem().(*tui.Example).Title()
-				if m.currentList.FilterState() == list.FilterApplied {
-					m.currentList.ResetFilter()
-				}
+			case pages.PRoot:
+				title := m.pages.CurrentList.SelectedItem().(*tui.Example).Title()
 
-				m.keys.EnableKindListKeys()
-
-				m, cmd = m.showYaml(title)
-				m.common.SetViewName(common.PRessources)
-
-				m.currentList.Select(0)
+				m.pages, cmd = m.pages.UpdateList(title)
+				m.pages.SetViewName(pages.PRessources)
 
 				return m, cmd
 			}
 
 		case key.Matches(msg, m.keys.Help):
-			if m.common.GetViewName() != common.PK8S {
+			if m.pages.GetViewName() != pages.PK8SGet && m.pages.GetViewName() != pages.PK8SGetFromRoot {
 				m.footer.Help.ShowAll = !m.footer.Help.ShowAll
 				m.footer.Help.Width = m.width
 
 				_, v := tui.AppStyle.GetFrameSize()
-				listHeight := m.currentList.Height()
+				listHeight := m.pages.CurrentList.Height()
 				helpHeight := lipgloss.Height(m.footer.Help.View(m.keys))
 
 				if m.footer.Help.ShowAll {
@@ -196,7 +159,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.centerHeight = m.listOldHeight
 				}
-				m.currentList.SetHeight(m.centerHeight)
+				m.pages.CurrentList.SetHeight(m.centerHeight)
 				m.errorPanel.SetSize(m.width-v, m.centerHeight)
 				m.markdown.SetSize(m.width, m.centerHeight)
 			}
@@ -205,7 +168,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.ShowRessources):
 			m.keys.EnableViewPortKeys()
 
-			if m.common.GetViewName() == common.PRoot {
+			if m.pages.GetViewName() == pages.PRoot {
 				cmd = tools.RenderMarkdown(m.config.Path+"/list-resources.md", m.width)
 
 				return m, cmd
@@ -213,7 +176,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.ShowTested):
 			m.keys.EnableViewPortKeys()
-			if m.common.GetViewName() == common.PRoot {
+			if m.pages.GetViewName() == pages.PRoot {
 				cmd = tools.RenderMarkdown(m.config.Path+"/list-tested.md", m.width)
 
 				return m, cmd
@@ -221,12 +184,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.GenerateListTested):
 			cmd = pages.GenerateListTested(m.config)
-			return m, cmd
-
-		case key.Matches(msg, m.keys.ShowDependanciesFiles):
-			m.showDependenciesFiles = !m.showDependenciesFiles
-			m.header.DependenciesStatus = m.showDependenciesFiles
-			cmd = m.currentList.NewStatusMessage(fmt.Sprintf("Show dependencies files →  %t", m.showDependenciesFiles))
 			return m, cmd
 
 		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply):
@@ -239,9 +196,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			switch {
 			case key.Matches(msg, m.keys.Get):
-				m.common.SetViewName(common.PK8S)
+				switch m.pages.GetViewName() {
+				case pages.PRoot:
+					m.pages.SetViewName(pages.PK8SGetFromRoot)
+				case pages.PRessources:
+					m.pages.SetViewName(pages.PK8SGet)
+				default:
+					return m, nil
+				}
 				m.k8sCurrentIDView = k8sCmd.ID
-				m.keys.EnableManagedKeys()
 				k8sCmd.Verb = k8sManaged
 
 			case key.Matches(msg, m.keys.Apply):
@@ -261,7 +224,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.common.AddContextToStop(cancel)
 			m.k8sCmdList[k8sCmd.ID] = k8sCmd
 			m.header.RunningCommands++
-			cmd = tools.Kubectl(ctx, k8sCmd)
+			cmd = k8s.Kubectl(ctx, k8sCmd)
 			return m, cmd
 		}
 
@@ -279,7 +242,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.header.SetWidth(m.width)
 		m.footer.SetWidth(m.width)
 
-		m.currentList.SetSize(m.width, centerH)
+		m.pages.CurrentList.SetSize(m.width, centerH)
 		m.dialogbox.SetSize(m.width, centerH)
 		m.errorPanel.SetSize(m.width, centerH)
 		m.markdown.SetSize(m.width, centerH)
@@ -288,27 +251,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case k8s.Message:
 		question := "Delete all ressources ?"
-		if m.showDependenciesFiles {
+		if m.pages.ShowDependenciesFiles {
 			question = "Delete all ressources WITH dependencies ?"
 		}
 		okValue := "No Fear !"
 		cancelValue := "I'm scared !"
 		m.dialogbox.SetDialogBox(question, okValue, cancelValue)
-		m.common.SetOldViewName(m.common.GetViewName())
-		m.oldKeys = &tui.ListKeyMap{}
-		*m.oldKeys = *m.keys
-		m.common.SetViewName(common.PDialogBox)
-		m.keys.EnableDialogBoxKeys()
+		m.pages.SetPreviousViewName(pages.PDialogBox, msg.PreviousPage)
+		m.pages.SetViewName(pages.PDialogBox)
 		return m, nil
 
 	case tui.LoadedExamples:
 		m.header.Notification = fmt.Sprintf("loaded new examples @ %s", time.Now().Format("15:04:05"))
 		m.header.NotificationOK = tui.CheckMark
-		m.exampleList = msg.Examples
-		m.currentList.SetItems(msg.Examples[m.listName])
+		m.pages.UpdateExamplesList(msg.Examples)
+		m.pages, cmd = m.pages.UpdateList()
+		return m, cmd
 
 	case tools.Markdown:
-		m.common.SetViewName(common.PViewPort)
+		m.pages.SetViewName(pages.PViewPort)
 		m.markdown.Viewport.SetContent(msg.Content)
 		m.markdown.Viewport.GotoTop()
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
@@ -325,7 +286,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tui.ListTestedDone:
-		cmd = m.currentList.NewStatusMessage("List tested generated")
+		cmd = m.pages.CurrentList.NewStatusMessage("List tested generated")
 		return m, cmd
 
 	case *k8s.Cmd:
@@ -336,7 +297,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
 
 		if msg.Verb == k8sManaged {
-			m.common.SetViewName(common.PK8S)
+			// m.pages.SetViewName(pages.PK8SGet)
 			m.k8sCurrentIDView = msg.ID
 			if !m.tickRunning {
 				m.tickRunning = true
@@ -346,7 +307,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tickK8SGet:
-		if m.common.GetViewName() == common.PDialogBox {
+		if m.pages.GetViewName() == pages.PDialogBox {
 			return m, nil
 		}
 		if m.tickRunning {
@@ -358,7 +319,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.k8sCmdList[m.k8sCurrentIDView].Cancel = cancel
 				m.common.AddContextToStop(cancel)
 				m.header.RunningCommands++
-				kubectlCmd = tools.Kubectl(ctx, m.k8sCmdList[m.k8sCurrentIDView])
+				kubectlCmd = k8s.Kubectl(ctx, m.k8sCmdList[m.k8sCurrentIDView])
 			}
 
 			// Note that you can also use progress.Model.SetPercent to set the
@@ -376,9 +337,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
-	if m.common.GetViewName() == common.PRoot || m.common.GetViewName() == common.PRessources {
-		newListModel, cmdList := m.currentList.Update(msg)
-		m.currentList = newListModel
+	if m.pages.GetViewName() == pages.PRoot || m.pages.GetViewName() == pages.PRessources {
+		newListModel, cmdList := m.pages.CurrentList.Update(msg)
+		m.pages.CurrentList = newListModel
 		cmds = append(cmds, cmdList)
 	}
 
@@ -393,8 +354,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.common.GetViewName() == common.PViewPort ||
-		m.common.GetViewName() == common.PPrintActions {
+	if m.pages.GetViewName() == pages.PViewPort ||
+		m.pages.GetViewName() == pages.PPrintActions {
 		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -402,13 +363,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.k8s, cmd = m.k8s.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if m.common.GetViewName() == common.PDialogBox {
+	if m.pages.GetViewName() == pages.PDialogBox {
 		m.dialogbox, cmd = m.dialogbox.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
 	m.common, cmd = m.common.Update(msg)
 	cmds = append(cmds, cmd)
+
+	// debug
+	if m.config.Debug {
+		m.header.Description = fmt.Sprintf("view: %s", m.pages.GetViewName())
+	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -433,14 +399,14 @@ func (m model) View() string {
 	if m.errorRaised {
 		center.WriteString(m.errorPanel.View())
 	} else {
-		switch m.common.GetViewName() {
-		case common.PDialogBox:
+		switch m.pages.GetViewName() {
+		case pages.PDialogBox:
 			center.WriteString(m.dialogbox.View())
 
-		case common.PViewPort:
+		case pages.PViewPort:
 			center.WriteString(m.markdown.Viewport.View())
 
-		case common.PK8S:
+		case pages.PK8SGet, pages.PK8SGetFromRoot:
 			cmd := m.k8sCmdList[m.k8sCurrentIDView]
 			getOutput := "loading..."
 			if cmd.Done {
@@ -471,55 +437,12 @@ func (m model) View() string {
 
 			center.WriteString(dialog)
 
-		case common.PRoot, common.PRessources:
-			center.WriteString(lipgloss.NewStyle().Render(m.currentList.View()))
+		case pages.PRoot, pages.PRessources:
+			center.WriteString(lipgloss.NewStyle().Render(m.pages.CurrentList.View()))
 
-		case common.PPrintActions:
-			selected := m.currentList.SelectedItem().(*tui.Example)
-			selectedFile := selected.Title()
-			yamlFile := ""
-
-			if selected.HaveSecretFile() {
-				yamlFile = fmt.Sprintf("%s,%s.secret", selectedFile, selectedFile)
-			} else {
-				yamlFile = selectedFile
-			}
-
-			str := []string{
-				"# Base file :",
-				fmt.Sprintf("* kubectl apply -f %s", yamlFile),
-				fmt.Sprintf("* kubectl delete -f %s", yamlFile),
-				fmt.Sprintf("* kubectl get -f %s", yamlFile),
-			}
-
-			if selected.HaveExtraFile() {
-				extraFile := selectedFile + ".extra"
-				str = append(str,
-					"# Extra file:",
-					fmt.Sprintf("* kubectl apply -f %s", extraFile),
-					fmt.Sprintf("* kubectl delete -f %s", extraFile),
-					fmt.Sprintf("* kubectl get -f %s", extraFile),
-				)
-			}
-
-			if m.showDependenciesFiles && selected.HaveDependenciesFiles() {
-				files := strings.Join(selected.DependenciesFilesList(), ",")
-				str = append(str,
-					"# Dependencies :",
-					fmt.Sprintf("* kubectl apply -f %s", files),
-					fmt.Sprintf("* kubectl delete -f %s", files),
-					fmt.Sprintf("* kubectl get -f %s", files),
-				)
-			}
-
-			renderer, _ := glamour.NewTermRenderer(
-				glamour.WithAutoStyle(),
-				glamour.WithWordWrap(m.width-2),
-				glamour.WithStylePath("dracula"),
-			)
-			ui, _ := renderer.Render(strings.Join(str, "\n"))
+		case pages.PPrintActions:
+			ui := m.k8s.View()
 			m.markdown.Viewport.SetContent(ui)
-
 			center.WriteString(m.markdown.Viewport.View())
 		}
 	}
@@ -541,26 +464,26 @@ func (m model) View() string {
 	return tui.AppStyle.Render(doc.String())
 }
 
-func (m model) showExamples() (model, tea.Cmd) {
-	i := m.exampleList["-"]
-	cmd := m.currentList.SetItems(i)
-	m.currentList.Title = "Choose an example"
-	m.listName = "-"
+// func (m model) showExamples() (model, tea.Cmd) {
+// 	i := m.exampleList["-"]
+// 	cmd := m.currentList.SetItems(i)
+// 	m.currentList.Title = "Choose an example"
+// 	m.listName = "-"
 
-	m.currentList.Select(0)
+// 	m.currentList.Select(0)
 
-	return m, cmd
-}
+// 	return m, cmd
+// }
 
-func (m model) showYaml(title string) (model, tea.Cmd) {
-	var cmd tea.Cmd
-	if _, ok := m.exampleList[title]; ok {
-		i := m.exampleList[title]
-		cmd = m.currentList.SetItems(i)
-		m.listName = title
-	}
-	return m, cmd
-}
+// func (m model) showYaml(title string) (model, tea.Cmd) {
+// 	var cmd tea.Cmd
+// 	if _, ok := m.exampleList[title]; ok {
+// 		i := m.exampleList[title]
+// 		cmd = m.currentList.SetItems(i)
+// 		m.listName = title
+// 	}
+// 	return m, cmd
+// }
 
 func (m model) tickCmd() tea.Cmd {
 	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
@@ -571,25 +494,25 @@ func (m model) tickCmd() tea.Cmd {
 	})
 }
 
-func (m model) rootView() (model, tea.Cmd) {
-	var cmds []tea.Cmd
-	m.common.SetViewName(common.PRoot)
-	m.keys.EnableRootKeys()
-	cmd := m.currentList.NewStatusMessage("back to home")
-	cmds = append(cmds, cmd)
+// func (m model) rootView() (model, tea.Cmd) {
+// 	var cmds []tea.Cmd
+// 	m.pages.SetViewName(pages.PRoot)
+// 	m.keys.EnableRootKeys()
+// 	cmd := m.currentList.NewStatusMessage("back to home")
+// 	cmds = append(cmds, cmd)
 
-	if m.currentList.FilterState() == list.FilterApplied {
-		m.currentList.ResetFilter()
-	}
+// 	if m.currentList.FilterState() == list.FilterApplied {
+// 		m.currentList.ResetFilter()
+// 	}
 
-	m, cmd = m.showExamples()
-	cmds = append(cmds, cmd)
+// 	m, cmd = m.showExamples()
+// 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
-}
+// 	return m, tea.Batch(cmds...)
+// }
 
 func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
-	if m.currentList.SelectedItem() == nil {
+	if m.pages.CurrentList.SelectedItem() == nil {
 		cmd := m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(
 			"no item selected, empty list ?",
@@ -600,9 +523,9 @@ func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
 		return m, nil, cmd
 	}
 
-	selectedItem := m.currentList.SelectedItem().(*tui.Example)
+	selectedItem := m.pages.CurrentList.SelectedItem().(*tui.Example)
 
-	file := selectedItem.Title()
+	file := selectedItem.FileWithPath()
 	extra := selectedItem.HaveExtraFile()
 	secret := selectedItem.HaveSecretFile()
 	files := []string{file}
@@ -617,7 +540,7 @@ func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
 		files = append(files, f)
 	}
 
-	if m.showDependenciesFiles && selectedItem.HaveDependenciesFiles() {
+	if m.pages.ShowDependenciesFiles && selectedItem.HaveDependenciesFiles() {
 		d := selectedItem.DependenciesFilesList()
 		files = append(files, d...)
 	}
