@@ -9,6 +9,7 @@ import (
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -34,11 +35,9 @@ type Model struct {
 	width                  int
 	Notification           string
 	NotificationOK         string
-	RunningCommands        int
-	// errorPanel             errorpanel.Model
-	// errorRaised            bool
-	config config.Provider
-	pages  *pages.Model
+	config                 config.Provider
+	pages                  *pages.Model
+	k8s                    *k8s.Model
 }
 
 // Init initializes the model.
@@ -70,6 +69,7 @@ func New(title string, desc string, w int, c config.Provider) Model {
 		width:          w,
 		config:         c,
 		pages:          &pages.Model{ShowDependenciesFiles: true},
+		k8s:            &k8s.Model{CmdList: make(map[string]*k8s.Cmd)},
 	}
 }
 
@@ -157,13 +157,13 @@ func (m Model) View() string {
 	dependenciesStatus := strings.Builder{}
 
 	t := strings.Trim(m.Notification, "\n")
-	if m.RunningCommands > 0 {
+	if m.k8s.GetRunningCmd() > 0 {
 		fmt.Fprintf(
 			&notification,
 			"%s %s (%d r) %s",
 			tui.Divider,
 			t,
-			m.RunningCommands,
+			m.k8s.GetRunningCmd(),
 			m.NotificationOK,
 		)
 	} else {
@@ -236,4 +236,9 @@ func (m *Model) SetWidth(w int) {
 // SetPagesModel set the pages model.
 func (m *Model) SetPagesModel(p *pages.Model) {
 	m.pages = p
+}
+
+// SetK8sModel set the k8s model.
+func (m *Model) SetK8SModel(k *k8s.Model) {
+	m.k8s = k
 }

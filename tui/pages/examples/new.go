@@ -14,7 +14,6 @@ import (
 	"github.com/FrangipaneTeam/bean/tui/pages/header"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/FrangipaneTeam/bean/tui/pages/md"
-	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -23,29 +22,23 @@ type model struct {
 	keys          *tui.ListKeyMap
 	oldKeys       *tui.ListKeyMap
 
-	errorRaised bool
-
 	// pages
 	common     *common.Model
 	header     header.Model
 	footer     footer.Model
-	errorPanel errorpanel.Model
+	errorPanel *errorpanel.Model
 	markdown   md.Model
-	k8s        k8s.Model
+	k8s        *k8s.Model
 
 	config config.Provider
 
 	k8sCurrentIDView string
 	k8sProgressMsg   string
-	progressK8SGet   progress.Model
-	tickRunning      bool
 
 	listOldHeight int
 	centerHeight  int
 
 	dialogbox dialogbox.Model
-
-	k8sCmdList map[string]*k8s.Cmd
 
 	pages     *pages.Model
 	pagesList map[pages.PageID]*pages.Page
@@ -83,37 +76,33 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	dialogKeys.EnableDialogBoxKeys()
 
 	// common model
-	k8sCmdList := make(map[string]*k8s.Cmd)
 	pagesModel := pages.New(rootKeys, e, width-h, height-v-headerHeight-footerHeight)
+	errorPanel := errorpanel.New(width-h, height-v-headerHeight-footerHeight)
 	header.SetPagesModel(pagesModel)
 
-	common := common.New(pagesModel)
+	k8s := k8s.New(rootKeys, pagesModel)
+	header.SetK8SModel(k8s)
+	common := common.New(pagesModel, &header, errorPanel, k8s)
 
 	return model{
-		keys:   rootKeys,
-		header: header,
-		footer: footer,
-		common: common,
+		keys:       rootKeys,
+		header:     header,
+		footer:     footer,
+		common:     common,
+		errorPanel: errorPanel,
 
-		errorPanel: errorpanel.New(width-h, height-v-headerHeight-footerHeight),
-		markdown:   md.New(width-h, height-v-headerHeight-footerHeight),
+		markdown: md.New(width-h, height-v-headerHeight-footerHeight),
 		dialogbox: dialogbox.New(
 			width-h,
 			height-v-headerHeight-footerHeight,
 			dialogKeys,
 		),
-		k8s:          k8s.New(rootKeys, pagesModel),
-		k8sCmdList:   k8sCmdList,
+		k8s:          k8s,
 		width:        width - h,
 		height:       height - v,
 		centerHeight: height - v - headerHeight - footerHeight,
 		config:       c,
 		pages:        pagesModel,
 		pagesList:    pages.BeanPages(),
-		progressK8SGet: progress.New(
-			progress.WithSolidFill("#CBEDD5"),
-			progress.WithoutPercentage(),
-			progress.WithWidth(progressWidth),
-		),
 	}
 }

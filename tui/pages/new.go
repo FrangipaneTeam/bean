@@ -29,6 +29,7 @@ const (
 	PDialogBox
 	PK8SGet
 	PK8SGetFromRoot
+	PError
 )
 
 type PageID int
@@ -47,6 +48,7 @@ func BeanPages() map[PageID]*Page {
 	k8sGetRootKeys := tui.NewListKeyMap()
 	k8sGetKeys := tui.NewListKeyMap()
 	dialogBoxKeys := tui.NewListKeyMap()
+	errorKeys := tui.NewListKeyMap()
 
 	rootKeys.EnableRootKeys()
 	kindKeys.EnableKindListKeys()
@@ -54,6 +56,7 @@ func BeanPages() map[PageID]*Page {
 	k8sGetRootKeys.EnableGetRootKeys()
 	k8sGetKeys.EnableGetKeys()
 	dialogBoxKeys.EnableDialogBoxKeys()
+	errorKeys.EnableErrorKeys()
 
 	root := &Page{
 		Keys:         rootKeys,
@@ -90,6 +93,11 @@ func BeanPages() map[PageID]*Page {
 		previousPage: PActual,
 	}
 
+	errorP := &Page{
+		Keys:         errorKeys,
+		previousPage: PRoot,
+	}
+
 	pages[PRoot] = root
 	pages[PRessources] = kind
 	pages[PViewPort] = viewport
@@ -97,6 +105,7 @@ func BeanPages() map[PageID]*Page {
 	pages[PK8SGetFromRoot] = k8sGetRoot
 	pages[PK8SGet] = k8sGet
 	pages[PDialogBox] = dialogBox
+	pages[PError] = errorP
 
 	return pages
 }

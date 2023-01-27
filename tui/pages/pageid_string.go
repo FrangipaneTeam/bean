@@ -16,11 +16,12 @@ func _() {
 	_ = x[PDialogBox-5]
 	_ = x[PK8SGet-6]
 	_ = x[PK8SGetFromRoot-7]
+	_ = x[PError-8]
 }
 
-const _PageID_name = "PActualPViewPortPRootPRessourcesPPrintActionsPDialogBoxPK8SGetPK8SGetFromRoot"
+const _PageID_name = "PActualPViewPortPRootPRessourcesPPrintActionsPDialogBoxPK8SGetPK8SGetFromRootPError"
 
-var _PageID_index = [...]uint8{0, 7, 16, 21, 32, 45, 55, 62, 77}
+var _PageID_index = [...]uint8{0, 7, 16, 21, 32, 45, 55, 62, 77, 83}
 
 func (i PageID) String() string {
 	if i < 0 || i >= PageID(len(_PageID_index)-1) {

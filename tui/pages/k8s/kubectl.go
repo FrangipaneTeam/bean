@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/FrangipaneTeam/bean/tools"
+	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -16,7 +16,7 @@ import (
 func Kubectl(ctx context.Context, k8sCmd *Cmd) tea.Cmd {
 	return func() tea.Msg {
 		if k8sCmd.Verb == "" || len(k8sCmd.Files) == 0 {
-			return tools.ErrorMsg{
+			return errorpanel.ErrorMsg{
 				Reason: "no verb or files provided",
 				Cause: fmt.Errorf(
 					"verb : %s - files : %d", k8sCmd.Verb, len(k8sCmd.Files),
@@ -38,7 +38,8 @@ func Kubectl(ctx context.Context, k8sCmd *Cmd) tea.Cmd {
 		defer close(cmdChan)
 
 		go func() {
-			cmd := exec.CommandContext(ctx, "kubectl", args...)
+			cmd := exec.CommandContext(ctx, "sleep", "10")
+			// cmd := exec.CommandContext(ctx, "kubectl", args...)
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr
@@ -59,10 +60,11 @@ func Kubectl(ctx context.Context, k8sCmd *Cmd) tea.Cmd {
 			switch result := cmdResult.(type) {
 			case error:
 				if result != nil {
-					return tools.ErrorMsg{
-						Reason: fmt.Sprintf("command kubectl %s failed", strings.Join(args, " ")),
-						Cause:  result,
-						CmdID:  k8sCmd.ID,
+					return errorpanel.ErrorMsg{
+						Reason:   fmt.Sprintf("command kubectl %s failed", strings.Join(args, " ")),
+						Cause:    result,
+						CmdID:    k8sCmd.ID,
+						FromPage: k8sCmd.FromPage,
 					}
 				}
 			case string:
@@ -70,9 +72,10 @@ func Kubectl(ctx context.Context, k8sCmd *Cmd) tea.Cmd {
 			}
 
 		case <-ctx.Done():
-			return tools.ErrorMsg{
-				Reason: "context done",
-				Cause:  errors.New("cancel kubectl command"),
+			return errorpanel.ErrorMsg{
+				Reason:   "context done",
+				Cause:    errors.New("cancel kubectl command"),
+				FromPage: k8sCmd.FromPage,
 			}
 		}
 
