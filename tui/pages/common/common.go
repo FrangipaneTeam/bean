@@ -3,7 +3,7 @@ package common
 import (
 	"context"
 
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
 	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
@@ -13,7 +13,7 @@ import (
 )
 
 type Model struct {
-	keys          *tui.ListKeyMap
+	keys          *keymap.ListKeyMap
 	contextToStop []context.CancelFunc
 	ex            *elist.Model
 	errorPanel    *errorpanel.Model
@@ -33,7 +33,7 @@ var (
 )
 
 func New(
-	keys *tui.ListKeyMap,
+	keys *keymap.ListKeyMap,
 	ex *elist.Model,
 	errorpanel *errorpanel.Model,
 	dialogbox *dialogbox.Model,

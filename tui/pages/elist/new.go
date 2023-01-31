@@ -1,34 +1,41 @@
 package elist
 
 import (
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
+	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type Model struct {
 	listName string
-	keys     *tui.ListKeyMap
+	keys     *keymap.ListKeyMap
 
 	// list
 	exampleList map[string][]list.Item
 	CurrentList list.Model
 }
 
-func New(keymap *tui.ListKeyMap, exampleList tui.LoadedExamples, width int, height int) *Model {
+func New(
+	keymap *keymap.ListKeyMap,
+	exampleList exlist.LoadedExamples,
+	width int,
+	height int,
+) *Model {
 	delegate := list.NewDefaultDelegate()
 
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightColour).
+		BorderForeground(theme.HighlightColour).
+		Foreground(theme.HighlightColour).
 		Bold(true)
 
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightFeintColour)
+		BorderForeground(theme.HighlightColour).
+		Foreground(theme.HighlightFeintColour)
 
 	delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.
-		Foreground(tui.FeintColour)
+		Foreground(theme.FeintColour)
 
 	delegate.Styles.FilterMatch = lipgloss.NewStyle().
 		Underline(true).

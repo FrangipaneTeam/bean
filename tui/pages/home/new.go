@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/FrangipaneTeam/bean/config"
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
+	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
 	"github.com/FrangipaneTeam/bean/tui/pages/elist"
@@ -18,7 +20,7 @@ import (
 )
 
 type model struct {
-	keys *tui.ListKeyMap
+	keys *keymap.ListKeyMap
 
 	// pages
 	common     *common.Model
@@ -46,16 +48,16 @@ type model struct {
 type tickK8SGet time.Time
 
 // New returns a new model of the examples page.
-func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
-	h, v := tui.AppStyle.GetFrameSize()
+func New(e exlist.LoadedExamples, width, height int, c config.Provider) model {
+	h, v := theme.AppStyle.GetFrameSize()
 
-	rootKeys := tui.NewListKeyMap()
-	dialogKeys := tui.NewListKeyMap()
-	version := lipgloss.NewStyle().Foreground(tui.NotificationColour).Render("v" + c.Version)
+	rootKeys := keymap.NewListKeyMap()
+	dialogKeys := keymap.NewListKeyMap()
+	version := lipgloss.NewStyle().Foreground(theme.NotificationColour).Render("v" + c.Version)
 
 	if c.NewVersion != "" {
 		newVersion := lipgloss.NewStyle().
-			Foreground(tui.NotificationColour).
+			Foreground(theme.NotificationColour).
 			Render("v" + c.NewVersion)
 		version = fmt.Sprintf("v%s (new version available: %s)", c.Version, newVersion)
 	}

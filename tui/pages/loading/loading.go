@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
+	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/pkg/examples"
-	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/FrangipaneTeam/bean/tui/pages/home"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -64,7 +65,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, nil
 
-	case tui.LoadedExamples:
+	case exlist.LoadedExamples:
 		e := home.New(msg, m.width, m.height, m.config)
 		cmd = e.Init()
 		return e, cmd
@@ -75,7 +76,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.WindowSizeMsg:
-		top, right, bottom, left := tui.AppStyle.GetMargin()
+		top, right, bottom, left := theme.AppStyle.GetMargin()
 		m.width, m.height = msg.Width-left-right, msg.Height-top-bottom
 
 		m.errorPanel.SetSize(m.width, m.height)
@@ -102,5 +103,5 @@ func (m model) View() string {
 		str = fmt.Sprintf("%s Loading data... Press q to quit\n\n", m.spinner.View())
 	}
 
-	return tui.AppStyle.Render(str)
+	return theme.AppStyle.Render(str)
 }

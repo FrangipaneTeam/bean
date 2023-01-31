@@ -3,7 +3,7 @@ package k8s
 import (
 	"context"
 
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/charmbracelet/bubbles/progress"
@@ -16,7 +16,7 @@ const (
 // Model is the model of the error panel.
 type Model struct {
 	pages                 *elist.Model
-	keys                  *tui.ListKeyMap
+	keys                  *keymap.ListKeyMap
 	width                 int
 	tickRunning           bool
 	CmdList               map[string]*Cmd
@@ -42,7 +42,7 @@ type Cmd struct {
 }
 
 // New returns a new model of the k8s page.
-func New(keymap *tui.ListKeyMap, common *common.Model, pages *elist.Model) *Model {
+func New(keymap *keymap.ListKeyMap, common *common.Model, pages *elist.Model) *Model {
 	cmdList := make(map[string]*Cmd)
 	return &Model{
 		keys:                  keymap,

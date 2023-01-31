@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -21,20 +21,20 @@ const (
 type PageID int
 
 type Page struct {
-	Keys         *tui.ListKeyMap
+	Keys         *keymap.ListKeyMap
 	previousPage PageID
 	oldIndex     int
 }
 
 func BeanPages() map[PageID]*Page {
 	pages := make(map[PageID]*Page)
-	rootKeys := tui.NewListKeyMap()
-	kindKeys := tui.NewListKeyMap()
-	viewportKeys := tui.NewListKeyMap()
-	k8sGetRootKeys := tui.NewListKeyMap()
-	k8sGetKeys := tui.NewListKeyMap()
-	dialogBoxKeys := tui.NewListKeyMap()
-	errorKeys := tui.NewListKeyMap()
+	rootKeys := keymap.NewListKeyMap()
+	kindKeys := keymap.NewListKeyMap()
+	viewportKeys := keymap.NewListKeyMap()
+	k8sGetRootKeys := keymap.NewListKeyMap()
+	k8sGetKeys := keymap.NewListKeyMap()
+	dialogBoxKeys := keymap.NewListKeyMap()
+	errorKeys := keymap.NewListKeyMap()
 
 	rootKeys.EnableRootKeys()
 	kindKeys.EnableKindListKeys()

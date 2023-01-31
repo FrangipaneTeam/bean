@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
+	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/charmbracelet/bubbles/help"
@@ -20,8 +21,8 @@ type Model struct {
 	Message       string
 	width         int
 	Help          help.Model
-	Keymap        *tui.ListKeyMap
-	keys          *tui.ListKeyMap
+	Keymap        *keymap.ListKeyMap
+	keys          *keymap.ListKeyMap
 	common        *common.Model
 	ex            *elist.Model
 	listOldHeight int
@@ -34,16 +35,16 @@ func (m Model) Init() tea.Cmd {
 }
 
 // New creates a new footer model.
-func New(w int, km *tui.ListKeyMap) *Model {
+func New(w int, km *keymap.ListKeyMap) *Model {
 	help := help.New()
-	help.Styles.ShortSeparator = tui.Ellipsis
-	help.Styles.ShortKey = tui.HelpText
-	help.Styles.ShortDesc = tui.HelpFeintText
-	help.Styles.FullSeparator = tui.Ellipsis
-	help.Styles.FullKey = tui.HelpText
-	help.Styles.FullDesc = tui.HelpFeintText
+	help.Styles.ShortSeparator = theme.Ellipsis
+	help.Styles.ShortKey = theme.HelpText
+	help.Styles.ShortDesc = theme.HelpFeintText
+	help.Styles.FullSeparator = theme.Ellipsis
+	help.Styles.FullKey = theme.HelpText
+	help.Styles.FullDesc = theme.HelpFeintText
 
-	keys := tui.NewListKeyMap()
+	keys := keymap.NewListKeyMap()
 	keys.EnableRootKeys()
 
 	return &Model{
@@ -79,7 +80,7 @@ func (m Model) View() string {
 	footer := strings.Builder{}
 	message := fmt.Sprintf(
 		"%s %s %s",
-		tui.Divider, strings.Trim(m.Message, "\n"), tui.Divider,
+		theme.Divider, strings.Trim(m.Message, "\n"), theme.Divider,
 	)
 
 	f := lipgloss.NewStyle()
@@ -91,8 +92,8 @@ func (m Model) View() string {
 		lipgloss.Center,
 		lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, false, false).
-			BorderForeground(tui.BorderColour).
-			Foreground(tui.TextColour).
+			BorderForeground(theme.BorderColour).
+			Foreground(theme.TextColour).
 			Render(message),
 	)
 

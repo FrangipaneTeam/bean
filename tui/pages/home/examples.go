@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
+	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
@@ -72,11 +73,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				if m.dialogbox.ActiveButton == dialogbox.GetCancelValue() {
 					m.header.Notification = "cancel delete"
-					m.header.NotificationOK = tui.ErrorMark
+					m.header.NotificationOK = theme.ErrorMark
 					m.common.RestorePreviousKeys()
 					m.common.RestorePreviousView()
 				} else {
-					m.header.NotificationOK = tui.RunningMark
+					m.header.NotificationOK = theme.RunningMark
 					m, k8sCmd, cmd = m.generateK8SFiles()
 					if cmd != nil {
 						m.common.RestorePreviousKeys()
@@ -88,7 +89,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					k8sCmd.Verb = k8sDelete
 
 					m.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
-					m.header.NotificationOK = tui.RunningMark
+					m.header.NotificationOK = theme.RunningMark
 
 					ctx, cancel := context.WithCancel(context.Background())
 					k8sCmd.Cancel = cancel
@@ -109,7 +110,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 
 			case common.PRoot:
-				title := m.pages.CurrentList.SelectedItem().(*tui.Example).Title()
+				title := m.pages.CurrentList.SelectedItem().(*exlist.Example).Title()
 
 				m.pages, cmd = m.pages.UpdateList(title)
 				m.common.SetViewName(common.PRessources)
@@ -148,7 +149,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.header.Notification = fmt.Sprintf("k %s @ %s", k8sCmd.Verb, time.Now().Format("15:04:05"))
-			m.header.NotificationOK = tui.RunningMark
+			m.header.NotificationOK = theme.RunningMark
 
 			ctx, cancel := context.WithCancel(context.Background())
 			k8sCmd.Cancel = cancel
@@ -172,9 +173,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.common.SetViewName(common.PDialogBox)
 		return m, nil
 
-	case tui.LoadedExamples:
+	case exlist.LoadedExamples:
 		m.header.Notification = fmt.Sprintf("loaded new examples @ %s", time.Now().Format("15:04:05"))
-		m.header.NotificationOK = tui.CheckMark
+		m.header.NotificationOK = theme.CheckMark
 		m.pages.UpdateExamplesList(msg.Examples)
 		m.pages, cmd = m.pages.UpdateList()
 		return m, cmd
@@ -182,7 +183,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errorpanel.ErrorMsg:
 		cmd = m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
-		m.header.NotificationOK = tui.ErrorMark
+		m.header.NotificationOK = theme.ErrorMark
 		m.common.SetPreviousViewName(common.PError, msg.FromPage.(common.PageID))
 		m.common.SetViewName(common.PError)
 		if m.config.Debug {
@@ -190,7 +191,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 
-	case tui.ListTestedDone:
+	case exlist.ListTestedDone:
 		cmd = m.pages.CurrentList.NewStatusMessage("List tested generated")
 		return m, cmd
 
@@ -198,7 +199,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// m.header.RunningCommands--
 		delete(m.k8s.CmdList, msg.ID)
 		common.RunningCommands = len(m.k8s.CmdList)
-		m.header.NotificationOK = tui.CheckMark
+		m.header.NotificationOK = theme.CheckMark
 		m.k8sProgressMsg = ""
 		m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
 
@@ -244,7 +245,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		headerHeight := m.header.Height()
 		footerHeight := m.footer.Height()
 
-		h, v := tui.AppStyle.GetFrameSize()
+		h, v := theme.AppStyle.GetFrameSize()
 
 		m.width, m.height = msg.Width-h, msg.Height-v
 		centerH := m.height - headerHeight - footerHeight
@@ -345,7 +346,7 @@ func (m model) View() string {
 				h = "kubectl get managed"
 			}
 
-			h = lipgloss.NewStyle().Background(tui.NotificationColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0).Render(h)
+			h = lipgloss.NewStyle().Background(theme.NotificationColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0).Render(h)
 			hHeight := lipgloss.Height(h)
 			reloadHeight := lipgloss.Height(reloadOutput)
 
@@ -387,7 +388,7 @@ func (m model) View() string {
 	// }
 
 	// Okay, let's print it
-	return tui.AppStyle.Render(doc.String())
+	return theme.AppStyle.Render(doc.String())
 }
 
 // func (m model) showExamples() (model, tea.Cmd) {
@@ -444,11 +445,11 @@ func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
 			"no item selected, empty list ?",
 			errors.New("m.currentList.SelectedItem() == nil"),
 		)
-		m.header.NotificationOK = tui.ErrorMark
+		m.header.NotificationOK = theme.ErrorMark
 		return m, nil, cmd
 	}
 
-	selectedItem := m.pages.CurrentList.SelectedItem().(*tui.Example)
+	selectedItem := m.pages.CurrentList.SelectedItem().(*exlist.Example)
 
 	file := selectedItem.FileWithPath()
 	extra := selectedItem.HaveExtraFile()

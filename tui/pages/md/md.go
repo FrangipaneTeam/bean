@@ -3,7 +3,7 @@ package md
 
 import (
 	"github.com/FrangipaneTeam/bean/config"
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/charmbracelet/bubbles/key"
@@ -21,7 +21,7 @@ const (
 type Model struct {
 	Viewport viewport.Model
 	pages    *elist.Model
-	keys     *tui.ListKeyMap
+	keys     *keymap.ListKeyMap
 	config   config.Provider
 	common   *common.Model
 }
@@ -34,7 +34,7 @@ func (m Model) Init() tea.Cmd {
 // New creates a new markdown viewer model.
 func New(
 	w, h int,
-	keys *tui.ListKeyMap,
+	keys *keymap.ListKeyMap,
 	common *common.Model,
 	pages *elist.Model,
 	config config.Provider,

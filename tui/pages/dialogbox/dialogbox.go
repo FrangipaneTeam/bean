@@ -3,7 +3,7 @@ package dialogbox
 import (
 	"strings"
 
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -47,7 +47,7 @@ var (
 // Model is the model of the error panel.
 type Model struct {
 	tea.Model
-	keys         *tui.ListKeyMap
+	keys         *keymap.ListKeyMap
 	width        int
 	height       int
 	question     string
@@ -57,7 +57,7 @@ type Model struct {
 }
 
 // New returns a new model of the error panel.
-func New(w int, h int, keymap *tui.ListKeyMap) *Model {
+func New(w int, h int, keymap *keymap.ListKeyMap) *Model {
 	return &Model{
 		width:        w,
 		height:       h,
