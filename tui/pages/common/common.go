@@ -4,10 +4,9 @@ import (
 	"context"
 
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
+	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
-	"github.com/FrangipaneTeam/bean/tui/pages/header"
-	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,41 +15,56 @@ import (
 type Model struct {
 	keys          *tui.ListKeyMap
 	contextToStop []context.CancelFunc
-	pages         *pages.Model
-	header        *header.Model
+	ex            *elist.Model
 	errorPanel    *errorpanel.Model
-	k8s           *k8s.Model
+	dialogbox     *dialogbox.Model
+	viewName      PageID
+	pages         map[PageID]*Page
 }
 
+type ResizeMsg struct{}
+
+var (
+	Width            int
+	Height           int
+	CenterHeight     int
+	ShowDependencies bool = true
+	RunningCommands  int
+)
+
 func New(
-	pages *pages.Model,
-	header *header.Model,
+	keys *tui.ListKeyMap,
+	ex *elist.Model,
 	errorpanel *errorpanel.Model,
-	k8s *k8s.Model,
+	dialogbox *dialogbox.Model,
 ) *Model {
 	return &Model{
-		keys:          tui.NewListKeyMap(),
+		keys:          keys,
 		contextToStop: []context.CancelFunc{},
-		pages:         pages,
-		header:        header,
+		ex:            ex,
 		errorPanel:    errorpanel,
-		k8s:           k8s,
+		dialogbox:     dialogbox,
+		viewName:      PRoot,
+		pages:         BeanPages(),
 	}
 }
 
 // Update updates the model.
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var (
-		// cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.pages.CurrentList.FilterState() == list.Filtering {
+		if m.ex.CurrentList.FilterState() == list.Filtering {
 			break
 		}
 		switch {
+		case key.Matches(msg, m.keys.Back):
+			m, cmds = m.Back()
+			return m, tea.Batch(cmds...)
+
 		case key.Matches(msg, m.keys.Quit):
 			for _, cancel := range m.contextToStop {
 				cancel()

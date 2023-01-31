@@ -1,5 +1,5 @@
 // Package pages initializes the examples list and watches for changes to the examples directory and the crd directory.
-package pages
+package examples
 
 import (
 	"errors"
@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/FrangipaneTeam/bean/config"
-	"github.com/FrangipaneTeam/bean/tools"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dietsche/rfsnotify"
@@ -29,14 +28,7 @@ type ResponseExamplesMsg NotifyActivity
 // LoadExamples loads the examples from the examples directory.
 func LoadExamples(c config.Provider) tea.Cmd {
 	return func() tea.Msg {
-		return tools.GenerateExamplesList(c)
-	}
-}
-
-// GenerateListTested generates the list of tested CRDs.
-func GenerateListTested(c config.Provider) tea.Cmd {
-	return func() tea.Msg {
-		return tools.GenerateListTested(c)
+		return GenerateExamplesList(c)
 	}
 }
 
@@ -82,7 +74,7 @@ func watchCRDFiles(watcher *fsnotify.Watcher, done chan bool, ch chan NotifyActi
 					Cause:  errors.New("event not ok"),
 				}
 			}
-			if tools.IsYamlFile(event.Name) {
+			if isYamlFile(event.Name) {
 				f := NotifyActivity{
 					FileName: event.Name,
 				}

@@ -1,23 +1,9 @@
-package pages
+package common
 
 import (
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
-
-type Model struct {
-	viewName PageID
-	listName string
-	keys     *tui.ListKeyMap
-	pages    map[PageID]*Page
-
-	// list
-	exampleList           map[string][]list.Item
-	CurrentList           list.Model
-	ShowDependenciesFiles bool
-}
 
 //go:generate stringer -type=PageID
 const (
@@ -110,47 +96,6 @@ func BeanPages() map[PageID]*Page {
 	return pages
 }
 
-func New(keymap *tui.ListKeyMap, exampleList tui.LoadedExamples, width int, height int) *Model {
-	delegate := list.NewDefaultDelegate()
-
-	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightColour).
-		Bold(true)
-
-	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
-		BorderForeground(tui.HighlightColour).
-		Foreground(tui.HighlightFeintColour)
-
-	delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.
-		Foreground(tui.FeintColour)
-
-	delegate.Styles.FilterMatch = lipgloss.NewStyle().
-		Underline(true).
-		Bold(true)
-
-	list := list.New(exampleList.Examples["-"],
-		delegate,
-		width,
-		height,
-	)
-	list.Title = "Choose an example"
-	list.DisableQuitKeybindings()
-	list.SetShowHelp(false)
-	list.SetStatusBarItemName("example", "examples")
-
-	// list.SetSize()
-
-	return &Model{
-		viewName:              PRoot,
-		keys:                  keymap,
-		pages:                 BeanPages(),
-		exampleList:           exampleList.Examples,
-		CurrentList:           list,
-		ShowDependenciesFiles: true,
-	}
-}
-
 // RestorePreviousKeys restore the keys.
 func (m *Model) RestorePreviousKeys() tea.Cmd {
 	if _, ok := m.pages[m.viewName]; ok {
@@ -169,9 +114,9 @@ func (m *Model) RestorePreviousView() tea.Cmd {
 		switch m.viewName {
 		case PRessources:
 			m.viewName = newPage.previousPage
-			m.CurrentList.Select(m.pages[m.viewName].oldIndex)
-			cmd = m.CurrentList.SetItems(m.exampleList["-"])
-			m.CurrentList.Title = "Choose an example"
+			m.ex.CurrentList.Select(m.pages[m.viewName].oldIndex)
+			m.ex, cmd = m.ex.SetRootItems()
+			m.ex.CurrentList.Title = "Choose an example"
 
 		// case PDialogBox:
 		// 	if m.keys.Print.Enabled() {
@@ -193,16 +138,16 @@ func (m *Model) RestorePreviousView() tea.Cmd {
 // SetView sets the view name.
 func (m *Model) SetViewName(name PageID) {
 	if m.viewName == PRoot {
-		m.pages[m.viewName].oldIndex = m.CurrentList.Index()
+		m.pages[m.viewName].oldIndex = m.ex.CurrentList.Index()
 	}
 	m.viewName = name
 	*m.keys = *m.pages[name].Keys
 
-	// if m.CurrentList.FilterState() == list.FilterApplied {
+	// if m.ex.CurrentList.FilterState() == list.FilterApplied {
 	if m.viewName == PRessources {
-		m.CurrentList.Select(0)
-		m.CurrentList.ResetFilter()
-		m.CurrentList.Title = "Choose a kind"
+		m.ex.CurrentList.Select(0)
+		m.ex.CurrentList.ResetFilter()
+		m.ex.CurrentList.Title = "Choose a kind"
 	}
 	// }
 }
@@ -210,36 +155,6 @@ func (m *Model) SetViewName(name PageID) {
 // GetView returns the view name.
 func (m Model) GetViewName() PageID {
 	return m.viewName
-}
-
-// UpdateExamplesList updates the examples list.
-func (m *Model) UpdateExamplesList(examples map[string][]list.Item) {
-	m.exampleList = examples
-}
-
-func (m *Model) UpdateList(params ...string) (*Model, tea.Cmd) {
-	var cmd tea.Cmd
-	title := m.listName
-	if len(params) != 0 {
-		title = params[0]
-	}
-
-	if _, ok := m.exampleList[title]; ok {
-		i := m.exampleList[title]
-		cmd = m.CurrentList.SetItems(i)
-		m.listName = title
-	}
-	return m, cmd
-}
-
-// GetDependenciesStatus returns the dependencies status.
-func (m Model) GetDependenciesStatus() bool {
-	return m.ShowDependenciesFiles
-}
-
-// SwitchDependenciesStatus switches the dependencies status.
-func (m *Model) SwitchDependenciesStatus() {
-	m.ShowDependenciesFiles = !m.ShowDependenciesFiles
 }
 
 // SetPreviousViewName sets the previous view name.

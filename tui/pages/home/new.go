@@ -1,4 +1,4 @@
-package examples
+package home
 
 import (
 	"fmt"
@@ -6,9 +6,9 @@ import (
 
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
+	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/FrangipaneTeam/bean/tui/pages/footer"
 	"github.com/FrangipaneTeam/bean/tui/pages/header"
@@ -18,16 +18,14 @@ import (
 )
 
 type model struct {
-	width, height int
-	keys          *tui.ListKeyMap
-	oldKeys       *tui.ListKeyMap
+	keys *tui.ListKeyMap
 
 	// pages
 	common     *common.Model
-	header     header.Model
-	footer     footer.Model
+	header     *header.Model
+	footer     *footer.Model
 	errorPanel *errorpanel.Model
-	markdown   md.Model
+	markdown   *md.Model
 	k8s        *k8s.Model
 
 	config config.Provider
@@ -35,13 +33,14 @@ type model struct {
 	k8sCurrentIDView string
 	k8sProgressMsg   string
 
-	listOldHeight int
-	centerHeight  int
+	dialogbox *dialogbox.Model
 
-	dialogbox dialogbox.Model
+	pages     *elist.Model
+	pagesList map[common.PageID]*common.Page
 
-	pages     *pages.Model
-	pagesList map[pages.PageID]*pages.Page
+	width        int
+	height       int
+	centerHeight int
 }
 
 type tickK8SGet time.Time
@@ -53,6 +52,7 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	rootKeys := tui.NewListKeyMap()
 	dialogKeys := tui.NewListKeyMap()
 	version := lipgloss.NewStyle().Foreground(tui.NotificationColour).Render("v" + c.Version)
+
 	if c.NewVersion != "" {
 		newVersion := lipgloss.NewStyle().
 			Foreground(tui.NotificationColour).
@@ -75,34 +75,45 @@ func New(e tui.LoadedExamples, width, height int, c config.Provider) model {
 	rootKeys.EnableRootKeys()
 	dialogKeys.EnableDialogBoxKeys()
 
-	// common model
-	pagesModel := pages.New(rootKeys, e, width-h, height-v-headerHeight-footerHeight)
+	pagesModel := elist.New(rootKeys, e, width-h, height-v-headerHeight-footerHeight)
 	errorPanel := errorpanel.New(width-h, height-v-headerHeight-footerHeight)
-	header.SetPagesModel(pagesModel)
 
-	k8s := k8s.New(rootKeys, pagesModel)
-	header.SetK8SModel(k8s)
-	common := common.New(pagesModel, &header, errorPanel, k8s)
+	footer.SetExamplesList(pagesModel)
+
+	dialogbox := dialogbox.New(
+		width-h,
+		height-v-headerHeight-footerHeight,
+		dialogKeys,
+	)
+	commonM := common.New(
+		rootKeys,
+		pagesModel,
+		errorPanel,
+		dialogbox,
+	)
+	footer.SetCommonModel(commonM)
+	k8s := k8s.New(rootKeys, commonM, pagesModel)
+	markdown := md.New(
+		width-h,
+		height-v-headerHeight-footerHeight,
+		rootKeys,
+		commonM,
+		pagesModel,
+		c,
+	)
 
 	return model{
 		keys:       rootKeys,
 		header:     header,
 		footer:     footer,
-		common:     common,
+		common:     commonM,
 		errorPanel: errorPanel,
 
-		markdown: md.New(width-h, height-v-headerHeight-footerHeight),
-		dialogbox: dialogbox.New(
-			width-h,
-			height-v-headerHeight-footerHeight,
-			dialogKeys,
-		),
-		k8s:          k8s,
-		width:        width - h,
-		height:       height - v,
-		centerHeight: height - v - headerHeight - footerHeight,
-		config:       c,
-		pages:        pagesModel,
-		pagesList:    pages.BeanPages(),
+		markdown:  markdown,
+		dialogbox: dialogbox,
+		k8s:       k8s,
+		config:    c,
+		pages:     pagesModel,
+		pagesList: common.BeanPages(),
 	}
 }

@@ -1,5 +1,5 @@
-// Package examples provides the examples page.
-package examples
+// Package home provides the home page.
+package home
 
 import (
 	"context"
@@ -10,9 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FrangipaneTeam/bean/tools"
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
@@ -43,7 +42,7 @@ func randSeq(n int) string {
 // Init initializes the model.
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		tea.EnterAltScreen,
+		// tea.EnterAltScreen,
 		m.header.Init(),
 		m.footer.Init(),
 		m.markdown.Init(),
@@ -66,26 +65,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.keys.Back):
-			m.common, cmds = m.common.Back()
-			return m, tea.Batch(cmds...)
-
 		case key.Matches(msg, m.keys.Select):
-			switch view := m.pages.GetViewName(); view {
-			case pages.PDialogBox:
+			switch view := m.common.GetViewName(); view {
+			case common.PDialogBox:
 				var k8sCmd *k8s.Cmd
 
 				if m.dialogbox.ActiveButton == dialogbox.GetCancelValue() {
 					m.header.Notification = "cancel delete"
 					m.header.NotificationOK = tui.ErrorMark
-					m.pages.RestorePreviousKeys()
-					m.pages.RestorePreviousView()
+					m.common.RestorePreviousKeys()
+					m.common.RestorePreviousView()
 				} else {
 					m.header.NotificationOK = tui.RunningMark
 					m, k8sCmd, cmd = m.generateK8SFiles()
 					if cmd != nil {
-						m.pages.RestorePreviousKeys()
-						m.pages.RestorePreviousView()
+						m.common.RestorePreviousKeys()
+						m.common.RestorePreviousView()
 						return m, cmd
 					}
 
@@ -101,68 +96,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.k8s.CmdList[k8sCmd.ID] = k8sCmd
 					cmd = k8s.Kubectl(ctx, k8sCmd)
 
-					m.pages.RestorePreviousKeys()
-					m.pages.RestorePreviousView()
+					m.common.RestorePreviousKeys()
+					m.common.RestorePreviousView()
 
 					cmds = append(cmds, cmd)
 				}
 
-				if m.pages.GetViewName() == pages.PK8SGet || m.pages.GetViewName() == pages.PK8SGetFromRoot {
+				if m.common.GetViewName() == common.PK8SGet || m.common.GetViewName() == common.PK8SGetFromRoot {
 					cmds = append(cmds, m.tickCmd())
 				}
 
 				return m, tea.Batch(cmds...)
 
-			case pages.PRoot:
+			case common.PRoot:
 				title := m.pages.CurrentList.SelectedItem().(*tui.Example).Title()
 
 				m.pages, cmd = m.pages.UpdateList(title)
-				m.pages.SetViewName(pages.PRessources)
+				m.common.SetViewName(common.PRessources)
 
 				return m, cmd
 			}
-
-		case key.Matches(msg, m.keys.Help):
-			if m.pages.GetViewName() != pages.PK8SGet && m.pages.GetViewName() != pages.PK8SGetFromRoot {
-				m.footer.Help.ShowAll = !m.footer.Help.ShowAll
-				m.footer.Help.Width = m.width
-
-				_, v := tui.AppStyle.GetFrameSize()
-				listHeight := m.pages.CurrentList.Height()
-				helpHeight := lipgloss.Height(m.footer.Help.View(m.keys))
-
-				if m.footer.Help.ShowAll {
-					m.listOldHeight = listHeight
-					m.centerHeight = listHeight - helpHeight + 1
-				} else {
-					m.centerHeight = m.listOldHeight
-				}
-				m.pages.CurrentList.SetHeight(m.centerHeight)
-				m.errorPanel.SetSize(m.width-v, m.centerHeight)
-				m.markdown.SetSize(m.width, m.centerHeight)
-			}
-			return m, cmd
-
-		case key.Matches(msg, m.keys.ShowRessources):
-			m.keys.EnableViewPortKeys()
-
-			if m.pages.GetViewName() == pages.PRoot {
-				cmd = tools.RenderMarkdown(m.config.Path+"/list-resources.md", m.width)
-
-				return m, cmd
-			}
-
-		case key.Matches(msg, m.keys.ShowTested):
-			m.keys.EnableViewPortKeys()
-			if m.pages.GetViewName() == pages.PRoot {
-				cmd = tools.RenderMarkdown(m.config.Path+"/list-tested.md", m.width)
-
-				return m, cmd
-			}
-
-		case key.Matches(msg, m.keys.GenerateListTested):
-			cmd = pages.GenerateListTested(m.config)
-			return m, cmd
 
 		case key.Matches(msg, m.keys.Get), key.Matches(msg, m.keys.Apply):
 			var k8sCmd *k8s.Cmd
@@ -170,15 +123,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if cmd != nil {
 				return m, cmd
 			}
-			k8sCmd.FromPage = m.pages.GetViewName()
+			k8sCmd.FromPage = m.common.GetViewName()
 
 			switch {
 			case key.Matches(msg, m.keys.Get):
-				switch m.pages.GetViewName() {
-				case pages.PRoot:
-					m.pages.SetViewName(pages.PK8SGetFromRoot)
-				case pages.PRessources:
-					m.pages.SetViewName(pages.PK8SGet)
+				switch m.common.GetViewName() {
+				case common.PRoot:
+					m.common.SetViewName(common.PK8SGetFromRoot)
+				case common.PRessources:
+					m.common.SetViewName(common.PK8SGet)
 				default:
 					return m, nil
 				}
@@ -201,40 +154,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			k8sCmd.Cancel = cancel
 			m.common.AddContextToStop(cancel)
 			m.k8s.CmdList[k8sCmd.ID] = k8sCmd
+			common.RunningCommands = len(m.k8s.CmdList)
 			// m.header.RunningCommands++
 			cmd = k8s.Kubectl(ctx, k8sCmd)
 			return m, cmd
 		}
 
-	case tea.WindowSizeMsg:
-		headerHeight := m.header.Height()
-		footerHeight := m.footer.Height()
-
-		h, v := tui.AppStyle.GetFrameSize()
-
-		m.width, m.height = msg.Width-h, msg.Height-v
-		centerH := m.height - headerHeight - footerHeight
-		m.centerHeight = centerH
-
-		m.header.SetWidth(m.width)
-		m.footer.SetWidth(m.width)
-
-		m.pages.CurrentList.SetSize(m.width, centerH)
-		m.dialogbox.SetSize(m.width, centerH)
-		m.errorPanel.SetSize(m.width, centerH)
-		m.markdown.SetSize(m.width, centerH)
-		return m, nil
-
 	case k8s.Message:
 		question := "Delete all ressources ?"
-		if m.pages.ShowDependenciesFiles {
+		if m.k8s.ShowDependenciesFiles {
 			question = "Delete all ressources WITH dependencies ?"
 		}
 		okValue := "No Fear !"
 		cancelValue := "I'm scared !"
 		m.dialogbox.SetDialogBox(question, okValue, cancelValue)
-		m.pages.SetPreviousViewName(pages.PDialogBox, msg.PreviousPage)
-		m.pages.SetViewName(pages.PDialogBox)
+		m.common.SetPreviousViewName(common.PDialogBox, msg.PreviousPage.(common.PageID))
+		m.common.SetViewName(common.PDialogBox)
 		return m, nil
 
 	case tui.LoadedExamples:
@@ -244,21 +179,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pages, cmd = m.pages.UpdateList()
 		return m, cmd
 
-	case tools.Markdown:
-		m.pages.SetViewName(pages.PViewPort)
-		m.markdown.Viewport.SetContent(msg.Content)
-		m.markdown.Viewport.GotoTop()
-		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
-		return m, cmd
-
 	case errorpanel.ErrorMsg:
 		cmd = m.errorPanel.Init()
 		m.errorPanel = m.errorPanel.RaiseError(msg.Reason, msg.Cause)
 		m.header.NotificationOK = tui.ErrorMark
-		m.pages.SetPreviousViewName(pages.PError, msg.FromPage.(pages.PageID))
-		m.pages.SetViewName(pages.PError)
+		m.common.SetPreviousViewName(common.PError, msg.FromPage.(common.PageID))
+		m.common.SetViewName(common.PError)
 		if m.config.Debug {
-			m.header.Notification = fmt.Sprintf("from %s", msg.FromPage.(pages.PageID))
+			m.header.Notification = fmt.Sprintf("from %s", msg.FromPage.(common.PageID))
 		}
 		return m, cmd
 
@@ -269,6 +197,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case *k8s.Cmd:
 		// m.header.RunningCommands--
 		delete(m.k8s.CmdList, msg.ID)
+		common.RunningCommands = len(m.k8s.CmdList)
 		m.header.NotificationOK = tui.CheckMark
 		m.k8sProgressMsg = ""
 		m.header.Notification = fmt.Sprintf("k %s @ %s", msg.Verb, time.Now().Format("15:04:05"))
@@ -283,7 +212,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tickK8SGet:
-		if m.pages.GetViewName() == pages.PDialogBox {
+		if m.common.GetViewName() == common.PDialogBox {
 			return m, nil
 		}
 		if m.k8s.IsTickRunning() {
@@ -310,10 +239,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		progressModel, cmd = m.k8s.GetProgress.Update(msg)
 		m.k8s.GetProgress = progressModel.(progress.Model)
 		return m, cmd
+
+	case tea.WindowSizeMsg:
+		headerHeight := m.header.Height()
+		footerHeight := m.footer.Height()
+
+		h, v := tui.AppStyle.GetFrameSize()
+
+		m.width, m.height = msg.Width-h, msg.Height-v
+		centerH := m.height - headerHeight - footerHeight
+		m.centerHeight = centerH
+
+		m.header.SetWidth(m.width)
+		m.footer.SetWidth(m.width)
+
+		m.pages.CurrentList.SetSize(m.width, centerH)
+		m.dialogbox.SetSize(m.width, centerH)
+
+		common.Height = m.height
+		common.Width = m.width
+		common.CenterHeight = centerH
+		return m, nil
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
-	if m.pages.GetViewName() == pages.PRoot || m.pages.GetViewName() == pages.PRessources {
+	if m.common.GetViewName() == common.PRoot || m.common.GetViewName() == common.PRessources {
 		newListModel, cmdList := m.pages.CurrentList.Update(msg)
 		m.pages.CurrentList = newListModel
 		cmds = append(cmds, cmdList)
@@ -325,21 +275,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.header, cmd = m.header.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.footer, cmd = m.footer.Update(msg)
-	cmds = append(cmds, cmd)
+	if m.pages.CurrentList.FilterState() != list.Filtering {
+		m.footer, cmd = m.footer.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	if m.errorPanel.ErrorRaised() {
 		m.errorPanel, cmd = m.errorPanel.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
-	if m.pages.GetViewName() == pages.PViewPort ||
-		m.pages.GetViewName() == pages.PPrintActions {
-		m.markdown.Viewport, cmd = m.markdown.Viewport.Update(msg)
-		cmds = append(cmds, cmd)
-	}
-
-	if m.pages.GetViewName() == pages.PDialogBox {
+	if m.common.GetViewName() == common.PDialogBox {
 		m.dialogbox, cmd = m.dialogbox.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -347,9 +293,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.common, cmd = m.common.Update(msg)
 	cmds = append(cmds, cmd)
 
+	m.markdown, cmd = m.markdown.Update(msg)
+	cmds = append(cmds, cmd)
+
 	// debug
 	if m.config.Debug {
-		m.header.Description = fmt.Sprintf("view: %s", m.pages.GetViewName())
+		m.header.Description = fmt.Sprintf("view: %s", m.common.GetViewName())
 	}
 
 	return m, tea.Batch(cmds...)
@@ -361,6 +310,7 @@ func (m model) View() string {
 	header := strings.Builder{}
 	footer := strings.Builder{}
 	center := strings.Builder{}
+	width := common.Width
 
 	// header
 	{
@@ -375,14 +325,14 @@ func (m model) View() string {
 	if m.errorPanel.ErrorRaised() {
 		center.WriteString(m.errorPanel.View())
 	} else {
-		switch m.pages.GetViewName() {
-		case pages.PDialogBox:
+		switch m.common.GetViewName() {
+		case common.PDialogBox:
 			center.WriteString(m.dialogbox.View())
 
-		case pages.PViewPort:
+		case common.PViewPort:
 			center.WriteString(m.markdown.Viewport.View())
 
-		case pages.PK8SGet, pages.PK8SGetFromRoot:
+		case common.PK8SGet, common.PK8SGetFromRoot:
 			cmd := m.k8s.CmdList[m.k8sCurrentIDView]
 			getOutput := "loading..."
 			if cmd.Done {
@@ -399,24 +349,24 @@ func (m model) View() string {
 			hHeight := lipgloss.Height(h)
 			reloadHeight := lipgloss.Height(reloadOutput)
 
-			boxHeight := m.centerHeight - hHeight - reloadHeight - 4
+			boxHeight := common.CenterHeight - hHeight - reloadHeight - 4
 			reloadOutput = fmt.Sprintf("%s reloading... %s", m.k8s.GetProgress.View(), m.k8sProgressMsg)
-			reloadOutput = lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Margin(1, 0, 1, 0).Render(reloadOutput)
-			cmdResult := lipgloss.NewStyle().Width(m.width - 2).MaxWidth(m.width).MaxHeight(boxHeight - 2).Padding(1).Render(getOutput)
-			getOutput = lipgloss.NewStyle().Width(m.width - 2).Height(boxHeight).Border(lipgloss.RoundedBorder()).Render(cmdResult)
+			reloadOutput = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Margin(1, 0, 1, 0).Render(reloadOutput)
+			cmdResult := lipgloss.NewStyle().Width(width - 2).MaxWidth(width).MaxHeight(boxHeight - 2).Padding(1).Render(getOutput)
+			getOutput = lipgloss.NewStyle().Width(width - 2).Height(boxHeight).Border(lipgloss.RoundedBorder()).Render(cmdResult)
 
 			ui := lipgloss.JoinVertical(lipgloss.Center, h, getOutput, reloadOutput)
-			dialog := lipgloss.Place(m.width, m.centerHeight,
+			dialog := lipgloss.Place(width, common.CenterHeight,
 				lipgloss.Center, lipgloss.Center,
 				lipgloss.NewStyle().Render(ui),
 			)
 
 			center.WriteString(dialog)
 
-		case pages.PRoot, pages.PRessources:
+		case common.PRoot, common.PRessources:
 			center.WriteString(lipgloss.NewStyle().Render(m.pages.CurrentList.View()))
 
-		case pages.PPrintActions:
+		case common.PPrintActions:
 			ui := m.k8s.View()
 			m.markdown.Viewport.SetContent(ui)
 			center.WriteString(m.markdown.Viewport.View())
@@ -515,7 +465,7 @@ func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
 		files = append(files, f)
 	}
 
-	if m.pages.ShowDependenciesFiles && selectedItem.HaveDependenciesFiles() {
+	if m.k8s.ShowDependenciesFiles && selectedItem.HaveDependenciesFiles() {
 		d := selectedItem.DependenciesFilesList()
 		files = append(files, d...)
 	}

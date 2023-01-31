@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
+	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/charmbracelet/bubbles/progress"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
@@ -15,18 +15,19 @@ const (
 
 // Model is the model of the error panel.
 type Model struct {
-	pages *pages.Model
-	tea.Model
-	keys        *tui.ListKeyMap
-	width       int
-	tickRunning bool
-	CmdList     map[string]*Cmd
-	GetProgress progress.Model
+	pages                 *elist.Model
+	keys                  *tui.ListKeyMap
+	width                 int
+	tickRunning           bool
+	CmdList               map[string]*Cmd
+	GetProgress           progress.Model
+	ShowDependenciesFiles bool
+	common                *common.Model
 }
 
 type Message struct {
 	ShowDialogBox bool
-	PreviousPage  pages.PageID
+	PreviousPage  interface{}
 }
 
 type Cmd struct {
@@ -37,16 +38,18 @@ type Cmd struct {
 	Kind     string
 	Result   string
 	Cancel   context.CancelFunc
-	FromPage pages.PageID
+	FromPage common.PageID
 }
 
 // New returns a new model of the k8s page.
-func New(keymap *tui.ListKeyMap, pages *pages.Model) *Model {
+func New(keymap *tui.ListKeyMap, common *common.Model, pages *elist.Model) *Model {
 	cmdList := make(map[string]*Cmd)
 	return &Model{
-		keys:    keymap,
-		pages:   pages,
-		CmdList: cmdList,
+		keys:                  keymap,
+		pages:                 pages,
+		common:                common,
+		CmdList:               cmdList,
+		ShowDependenciesFiles: true,
 		GetProgress: progress.New(
 			progress.WithSolidFill("#CBEDD5"),
 			progress.WithoutPercentage(),

@@ -83,7 +83,23 @@ func (m Model) Init() tea.Cmd {
 
 // Update updates the model.
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd tea.Cmd
+	)
+
+	switch msg.(type) {
+	// Is it a key press?
+	// case tea.KeyMsg:
+	// 	// Don't match any of the keys below if we're actively filtering.
+	// 	if m.pages.CurrentList.FilterState() == list.Filtering {
+	// 		break
+	// 	}
+	// case tea.WindowSizeMsg:
+	// 	m.SetSize(common.Width, common.CenterHeight)
+
+	// case common.ResizeMsg:
+	// m.SetSize(common.Width, common.CenterHeight)
+	}
 	m.spinner, cmd = m.spinner.Update(msg)
 	return m, cmd
 }

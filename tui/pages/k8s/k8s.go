@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,25 +30,37 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			break
 		}
 		switch {
+		case key.Matches(msg, m.keys.Back):
+			m.SetTickRunning(false)
+
+			// back to the list, cancel all k8sCmd
+			for _, v := range m.CmdList {
+				v.Cancel()
+			}
+			// running command °
+			m.CmdList = make(map[string]*Cmd)
+			common.RunningCommands = 0
+
 		case key.Matches(msg, m.keys.Delete):
 			cmd = func() tea.Msg {
 				return Message{
 					ShowDialogBox: true,
-					PreviousPage:  m.pages.GetViewName(),
+					PreviousPage:  m.common.GetViewName(),
 				}
 			}
 			return m, cmd
 
 		case key.Matches(msg, m.keys.Print):
-			m.pages.SetViewName(pages.PPrintActions)
+			m.common.SetViewName(common.PPrintActions)
 			m.keys.ShowDependanciesFiles.SetEnabled(true)
 			return m, nil
 
 		case key.Matches(msg, m.keys.ShowDependanciesFiles):
-			m.pages.SwitchDependenciesStatus()
+			m.SwitchDependenciesStatus()
 			cmd = m.pages.CurrentList.NewStatusMessage(
-				fmt.Sprintf("Show dependencies files →  %t", m.pages.ShowDependenciesFiles),
+				fmt.Sprintf("Show dependencies files →  %t", m.ShowDependenciesFiles),
 			)
+			common.ShowDependencies = m.ShowDependenciesFiles
 			return m, cmd
 		}
 	}
@@ -84,7 +96,7 @@ func (m Model) View() string {
 		)
 	}
 
-	if m.pages.ShowDependenciesFiles && selected.HaveDependenciesFiles() {
+	if m.ShowDependenciesFiles && selected.HaveDependenciesFiles() {
 		files := strings.Join(selected.DependenciesFilesList(), ",")
 		str = append(str,
 			"# Dependencies :",
@@ -120,4 +132,14 @@ func (m *Model) SetTickRunning(state bool) {
 // GetRunningCmd returns the running command.
 func (m Model) GetRunningCmd() int {
 	return len(m.CmdList)
+}
+
+// GetDependenciesStatus returns the dependencies status.
+func (m Model) GetDependenciesStatus() bool {
+	return m.ShowDependenciesFiles
+}
+
+// SwitchDependenciesStatus switches the dependencies status.
+func (m *Model) SwitchDependenciesStatus() {
+	m.ShowDependenciesFiles = !m.ShowDependenciesFiles
 }
