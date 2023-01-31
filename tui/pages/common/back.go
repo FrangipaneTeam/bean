@@ -14,10 +14,6 @@ func (m *Model) Back() (*Model, []tea.Cmd) {
 	m.RestorePreviousKeys()
 	cmdView := m.RestorePreviousView()
 
-	// error handling
-	if m.errorPanel.ErrorRaised() {
-		m.errorPanel.Clear()
-	}
 	cmds = append(cmds, cmdView)
 
 	return m, cmds
