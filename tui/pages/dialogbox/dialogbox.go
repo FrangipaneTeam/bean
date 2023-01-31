@@ -57,8 +57,8 @@ type Model struct {
 }
 
 // New returns a new model of the error panel.
-func New(w int, h int, keymap *tui.ListKeyMap) Model {
-	return Model{
+func New(w int, h int, keymap *tui.ListKeyMap) *Model {
+	return &Model{
 		width:        w,
 		height:       h,
 		keys:         keymap,
@@ -72,7 +72,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 // Update updates the model.
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var (
 		// cmd  tea.Cmd
 		cmds []tea.Cmd

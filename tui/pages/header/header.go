@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/pkg/examples"
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages"
-	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -30,51 +30,47 @@ type Model struct {
 	spinner                spinner.Model
 	hideNotify             int
 	activityFrom           interface{}
-	notifyCrds             chan pages.NotifyActivity
-	notifyExamples         chan pages.NotifyActivity
+	notifyCrds             chan examples.NotifyActivity
+	notifyExamples         chan examples.NotifyActivity
 	width                  int
 	Notification           string
 	NotificationOK         string
 	config                 config.Provider
-	pages                  *pages.Model
-	k8s                    *k8s.Model
 }
 
 // Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
-		pages.WaitForCrdActivity(m.notifyCrds),
-		pages.WaitForExamplesActivity(m.notifyExamples),
-		pages.ListenForCRDActivity(m.notifyCrds, m.config),
-		pages.ListenForExamplesActivity(m.notifyExamples, m.config),
+		examples.WaitForCrdActivity(m.notifyCrds),
+		examples.WaitForExamplesActivity(m.notifyExamples),
+		examples.ListenForCRDActivity(m.notifyCrds, m.config),
+		examples.ListenForExamplesActivity(m.notifyExamples, m.config),
 		m.spinner.Tick,
 		tick,
 	)
 }
 
 // New creates a new header model.
-func New(title string, desc string, w int, c config.Provider) Model {
+func New(title string, desc string, w int, c config.Provider) *Model {
 	s := spinner.New()
 	s.Spinner = spinner.Points
 	s.Style = lipgloss.NewStyle().Foreground(tui.SpinnerColour)
 
-	return Model{
+	return &Model{
 		Title:          title,
 		Description:    desc,
 		Notification:   "ready",
 		NotificationOK: tui.RunningMark,
 		spinner:        s,
-		notifyCrds:     make(chan pages.NotifyActivity),
-		notifyExamples: make(chan pages.NotifyActivity),
+		notifyCrds:     make(chan examples.NotifyActivity),
+		notifyExamples: make(chan examples.NotifyActivity),
 		width:          w,
 		config:         c,
-		pages:          &pages.Model{ShowDependenciesFiles: true},
-		k8s:            &k8s.Model{CmdList: make(map[string]*k8s.Cmd)},
 	}
 }
 
 // Update updates the model.
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -84,12 +80,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.hideNotify--
 		if m.hideNotify <= 0 {
 			switch m.activityFrom.(type) {
-			case pages.ResponseCRDMsg:
+			case examples.ResponseCRDMsg:
 				m.crdRecentActivity = false
 				// cmds = append(cmds, tools.Kubectl(m.config.Path+"/package/crds", "apply"))
-			case pages.ResponseExamplesMsg:
+			case examples.ResponseExamplesMsg:
 				m.examplesRecentActivity = false
-				cmds = append(cmds, pages.LoadExamples(m.config))
+				cmds = append(cmds, examples.LoadExamples(m.config))
 			}
 		} else {
 			return m, tick
@@ -99,16 +95,16 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 
-	case pages.ResponseCRDMsg:
-		cmds = append(cmds, pages.WaitForCrdActivity(m.notifyCrds), tick)
+	case examples.ResponseCRDMsg:
+		cmds = append(cmds, examples.WaitForCrdActivity(m.notifyCrds), tick)
 		if !m.crdRecentActivity {
 			m.hideNotify = 5
 			m.crdRecentActivity = true
 			m.activityFrom = msg
 		}
 
-	case pages.ResponseExamplesMsg:
-		cmds = append(cmds, pages.WaitForExamplesActivity(m.notifyExamples), tick)
+	case examples.ResponseExamplesMsg:
+		cmds = append(cmds, examples.WaitForExamplesActivity(m.notifyExamples), tick)
 		if !m.examplesRecentActivity {
 			m.hideNotify = 5
 			m.examplesRecentActivity = true
@@ -157,13 +153,13 @@ func (m Model) View() string {
 	dependenciesStatus := strings.Builder{}
 
 	t := strings.Trim(m.Notification, "\n")
-	if m.k8s.GetRunningCmd() > 0 {
+	if common.RunningCommands > 0 {
 		fmt.Fprintf(
 			&notification,
 			"%s %s (%d r) %s",
 			tui.Divider,
 			t,
-			m.k8s.GetRunningCmd(),
+			common.RunningCommands,
 			m.NotificationOK,
 		)
 	} else {
@@ -177,7 +173,7 @@ func (m Model) View() string {
 	}
 
 	fmt.Fprintf(&dependenciesStatus, "")
-	if m.pages.GetDependenciesStatus() {
+	if common.ShowDependencies {
 		fmt.Fprintf(
 			&dependenciesStatus,
 			"%s dependencies %s",
@@ -231,14 +227,4 @@ func (m Model) Width() int {
 // SetWidth set the width of the view.
 func (m *Model) SetWidth(w int) {
 	m.width = w
-}
-
-// SetPagesModel set the pages model.
-func (m *Model) SetPagesModel(p *pages.Model) {
-	m.pages = p
-}
-
-// SetK8sModel set the k8s model.
-func (m *Model) SetK8SModel(k *k8s.Model) {
-	m.k8s = k
 }

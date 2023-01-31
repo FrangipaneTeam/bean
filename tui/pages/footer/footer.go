@@ -6,7 +6,10 @@ import (
 	"strings"
 
 	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
+	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -14,10 +17,15 @@ import (
 // Model is the model of the footer.
 type Model struct {
 	tea.Model
-	Message string
-	width   int
-	Help    help.Model
-	Keymap  *tui.ListKeyMap
+	Message       string
+	width         int
+	Help          help.Model
+	Keymap        *tui.ListKeyMap
+	keys          *tui.ListKeyMap
+	common        *common.Model
+	ex            *elist.Model
+	listOldHeight int
+	centerHeight  int
 }
 
 // Init initializes the model.
@@ -26,7 +34,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 // New creates a new footer model.
-func New(w int, km *tui.ListKeyMap) Model {
+func New(w int, km *tui.ListKeyMap) *Model {
 	help := help.New()
 	help.Styles.ShortSeparator = tui.Ellipsis
 	help.Styles.ShortKey = tui.HelpText
@@ -34,17 +42,36 @@ func New(w int, km *tui.ListKeyMap) Model {
 	help.Styles.FullSeparator = tui.Ellipsis
 	help.Styles.FullKey = tui.HelpText
 	help.Styles.FullDesc = tui.HelpFeintText
-	return Model{
+
+	keys := tui.NewListKeyMap()
+	keys.EnableRootKeys()
+
+	return &Model{
 		Message: "FrangipaneTeam",
 		width:   w,
 		Help:    help,
 		Keymap:  km,
+		keys:    keys,
 	}
 }
 
 // Update updates the model.
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	return m, nil
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.keys.Help):
+			m, cmd = m.help()
+			return m, cmd
+		}
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 // View renders the model.
@@ -91,4 +118,14 @@ func (m Model) Width() int {
 // SetWidth sets the width of the view.
 func (m *Model) SetWidth(w int) {
 	m.width = w
+}
+
+// SetExamplesList sets the examples list.
+func (m *Model) SetExamplesList(e *elist.Model) {
+	m.ex = e
+}
+
+// SetCommonModel sets the common model.
+func (m *Model) SetCommonModel(c *common.Model) {
+	m.common = c
 }

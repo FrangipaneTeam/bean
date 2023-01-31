@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/pkg/examples"
 	"github.com/FrangipaneTeam/bean/tui"
-	"github.com/FrangipaneTeam/bean/tui/pages"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
-	"github.com/FrangipaneTeam/bean/tui/pages/examples"
+	"github.com/FrangipaneTeam/bean/tui/pages/home"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -41,7 +41,7 @@ func New(c config.Provider) model {
 
 func (m model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, m.spinner.Tick, tea.EnterAltScreen, pages.LoadExamples(m.config))
+	cmds = append(cmds, m.spinner.Tick, tea.EnterAltScreen, examples.LoadExamples(m.config))
 	return tea.Batch(cmds...)
 }
 
@@ -65,7 +65,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tui.LoadedExamples:
-		e := examples.New(msg, m.width, m.height, m.config)
+		e := home.New(msg, m.width, m.height, m.config)
 		cmd = e.Init()
 		return e, cmd
 
