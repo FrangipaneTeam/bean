@@ -4,12 +4,12 @@ import (
 	"log"
 	"os"
 	"strings"
-	"text/template"
 
 	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/internal/crd"
+	"github.com/FrangipaneTeam/bean/internal/examples"
 	"github.com/FrangipaneTeam/bean/internal/exlist"
-	"github.com/FrangipaneTeam/bean/pkg/crd"
-	"github.com/FrangipaneTeam/bean/pkg/examples"
+	"github.com/FrangipaneTeam/bean/internal/template"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -67,38 +67,13 @@ func GenerateListTested(c config.Provider) tea.Cmd {
 {{ end }}
 `
 
-			processTemplate(
+			template.Process(
 				markdownTemplate,
 				c.Path+"/list-tested.md",
 				data,
 			)
 		}
 		return exlist.ListTestedDone{}
-	}
-}
-
-// processTemplate processes a template file and writes the output to a file.
-func processTemplate(rawTemplate string, outputFile string, data interface{}) {
-	var err error
-
-	// Read the template file
-	t := template.Must(template.New("listTested").Parse(rawTemplate)) // .Funcs(funcMap)
-
-	// Parse the template
-	t, err = t.Parse(rawTemplate)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// create a new file
-	file, _ := os.Create(outputFile)
-	defer file.Close()
-
-	// Execute the template
-	err = t.ExecuteTemplate(file, "listTested", data)
-	if err != nil {
-		//TODO: handle error in app
-		log.Print(err)
 	}
 }
 

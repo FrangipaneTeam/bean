@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/FrangipaneTeam/bean/config"
+	yml "github.com/FrangipaneTeam/bean/pkg/yaml"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dietsche/rfsnotify"
@@ -74,7 +75,7 @@ func watchCRDFiles(watcher *fsnotify.Watcher, done chan bool, ch chan NotifyActi
 					Cause:  errors.New("event not ok"),
 				}
 			}
-			if isYamlFile(event.Name) {
+			if yml.IsYamlFile(event.Name) {
 				f := NotifyActivity{
 					FileName: event.Name,
 				}
