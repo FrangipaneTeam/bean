@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/internal/examples"
 	"github.com/FrangipaneTeam/bean/internal/theme"
-	"github.com/FrangipaneTeam/bean/pkg/examples"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"

@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/internal/examples"
 	"github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/internal/theme"
-	"github.com/FrangipaneTeam/bean/pkg/examples"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/FrangipaneTeam/bean/tui/pages/home"
 	"github.com/charmbracelet/bubbles/spinner"

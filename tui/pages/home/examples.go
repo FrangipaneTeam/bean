@@ -385,35 +385,8 @@ func (m model) View() string {
 		footer.String(),
 	))
 
-	// if m.width > 0 {
-	// 	// physicalWidth, physicalHeight, _ := term.GetSize(int(os.Stdout.Fd()))
-	// 	tui.AppStyle = tui.AppStyle.MaxWidth(m.width).MaxHeight(m.height)
-	// }
-
-	// Okay, let's print it
 	return theme.AppStyle.Render(doc.String())
 }
-
-// func (m model) showExamples() (model, tea.Cmd) {
-// 	i := m.exampleList["-"]
-// 	cmd := m.currentList.SetItems(i)
-// 	m.currentList.Title = "Choose an example"
-// 	m.listName = "-"
-
-// 	m.currentList.Select(0)
-
-// 	return m, cmd
-// }
-
-// func (m model) showYaml(title string) (model, tea.Cmd) {
-// 	var cmd tea.Cmd
-// 	if _, ok := m.exampleList[title]; ok {
-// 		i := m.exampleList[title]
-// 		cmd = m.currentList.SetItems(i)
-// 		m.listName = title
-// 	}
-// 	return m, cmd
-// }
 
 func (m model) tickCmd() tea.Cmd {
 	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
@@ -423,23 +396,6 @@ func (m model) tickCmd() tea.Cmd {
 		return tickK8SGet(t)
 	})
 }
-
-// func (m model) rootView() (model, tea.Cmd) {
-// 	var cmds []tea.Cmd
-// 	m.pages.SetViewName(pages.PRoot)
-// 	m.keys.EnableRootKeys()
-// 	cmd := m.currentList.NewStatusMessage("back to home")
-// 	cmds = append(cmds, cmd)
-
-// 	if m.currentList.FilterState() == list.FilterApplied {
-// 		m.currentList.ResetFilter()
-// 	}
-
-// 	m, cmd = m.showExamples()
-// 	cmds = append(cmds, cmd)
-
-// 	return m, tea.Batch(cmds...)
-// }
 
 func (m model) generateK8SFiles() (model, *k8s.Cmd, tea.Cmd) {
 	if m.pages.CurrentList.SelectedItem() == nil {

@@ -1,16 +1,13 @@
 package examples
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/internal/exlist"
+	yml "github.com/FrangipaneTeam/bean/pkg/yaml"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -95,7 +92,7 @@ func createExampleList(dir string) ([]*exlist.Example, *errorpanel.ErrorMsg) {
 		}
 
 		// get only yaml files
-		if isYaml := isYamlFile(sf.Name()); !isYaml {
+		if isYaml := yml.IsYamlFile(sf.Name()); !isYaml {
 			continue
 		}
 
@@ -157,12 +154,6 @@ func createExampleList(dir string) ([]*exlist.Example, *errorpanel.ErrorMsg) {
 	return exampleList, nil
 }
 
-// isYamlFile returns true if the file is a yaml file.
-func isYamlFile(fileName string) bool {
-	ext := filepath.Ext(fileName)
-	return ext == ".yaml" || ext == ".yml"
-}
-
 func checkForExtraFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 	var (
 		extraK8S  *exlist.Example
@@ -173,7 +164,7 @@ func checkForExtraFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 		fmt.Sprintf("%s/%s.extra", dir, file),
 	)
 	if err == nil {
-		extraY, errSplitYaml := splitYAML(extraYFile)
+		extraY, errSplitYaml := yml.SplitYAML(extraYFile)
 		if errSplitYaml != nil {
 			return extraKind, &errorpanel.ErrorMsg{
 				Reason: "split yaml error",
@@ -204,7 +195,7 @@ func checkForSecretFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 		fmt.Sprintf("%s/%s.secret", dir, file),
 	)
 	if err == nil {
-		extraY, errSplitYaml := splitYAML(extraSFile)
+		extraY, errSplitYaml := yml.SplitYAML(extraSFile)
 		if errSplitYaml != nil {
 			return extraKind, &errorpanel.ErrorMsg{
 				Reason: "split yaml error",
@@ -224,26 +215,4 @@ func checkForSecretFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 		}
 	}
 	return extraKind, nil
-}
-
-func splitYAML(resources []byte) ([][]byte, error) {
-	dec := yaml.NewDecoder(bytes.NewReader(resources))
-
-	var res [][]byte
-	for {
-		var value interface{}
-		err := dec.Decode(&value)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		valueBytes, err := yaml.Marshal(value)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, valueBytes)
-	}
-	return res, nil
 }
