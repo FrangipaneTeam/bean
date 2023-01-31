@@ -1,5 +1,5 @@
-// Package tui provides the keymap for the application
-package tui
+// Package keymap provides the keymap for the application
+package keymap
 
 import (
 	"github.com/charmbracelet/bubbles/help"

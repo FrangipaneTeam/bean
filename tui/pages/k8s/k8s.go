@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -69,7 +69,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 // View renders the model.
 func (m Model) View() string {
-	selected := m.pages.CurrentList.SelectedItem().(*tui.Example)
+	selected := m.pages.CurrentList.SelectedItem().(*exlist.Example)
 	selectedFile := selected.FileWithPath()
 	yamlFile := ""
 

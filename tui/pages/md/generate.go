@@ -7,9 +7,9 @@ import (
 	"text/template"
 
 	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/pkg/crd"
 	"github.com/FrangipaneTeam/bean/pkg/examples"
-	"github.com/FrangipaneTeam/bean/tui"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -34,7 +34,7 @@ func GenerateListTested(c config.Provider) tea.Cmd {
 			log.Print(ex.Cause.Error())
 			os.Exit(1)
 
-		case tui.LoadedExamples:
+		case exlist.LoadedExamples:
 
 			data := &listTestedStruct{}
 			data.Init()
@@ -48,7 +48,7 @@ func GenerateListTested(c config.Provider) tea.Cmd {
 					continue
 				}
 				for _, val := range v {
-					e, ok := val.(*tui.Example)
+					e, ok := val.(*exlist.Example)
 					if ok {
 						apiVersion := strings.Split(e.APIVersion, "/")
 						data.CheckIfTested(apiVersion[0], e.Kind)
@@ -73,7 +73,7 @@ func GenerateListTested(c config.Provider) tea.Cmd {
 				data,
 			)
 		}
-		return tui.ListTestedDone{}
+		return exlist.ListTestedDone{}
 	}
 }
 

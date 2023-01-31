@@ -5,7 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
+	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -34,7 +35,7 @@ type ErrorMsg struct {
 	Cause    error
 	CmdID    string
 	Index    int
-	Item     *tui.Example
+	Item     *exlist.Example
 	FromPage interface{}
 }
 
@@ -67,7 +68,7 @@ func New(w, h int) *Model {
 		},
 		FPS: time.Second / spinnerFPS,
 	}
-	s.Style = lipgloss.NewStyle().Foreground(tui.RedColour).Bold(true)
+	s.Style = lipgloss.NewStyle().Foreground(theme.RedColour).Bold(true)
 
 	return &Model{
 		spinner: s,
@@ -111,10 +112,10 @@ func (m Model) View() string {
 	reason := lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.spinner.View(),
-		tui.Reason.Margin(marginTop, 0, 0, 0).Render(m.reason),
+		theme.Reason.Margin(marginTop, 0, 0, 0).Render(m.reason),
 	)
 
-	desc := tui.Cause.Render(wordwrap.String(m.cause, m.width))
+	desc := theme.Cause.Render(wordwrap.String(m.cause, m.width))
 
 	panel := lipgloss.JoinVertical(
 		lipgloss.Top,

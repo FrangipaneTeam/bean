@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/FrangipaneTeam/bean/config"
-	"github.com/FrangipaneTeam/bean/tui"
+	"github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,7 +26,7 @@ func GenerateExamplesList(c config.Provider) tea.Msg {
 			Cause:  err,
 		}
 	}
-	var s tui.LoadedExamples
+	var s exlist.LoadedExamples
 	s.Examples = make(map[string][]list.Item)
 	rootExamples := []list.Item{}
 
@@ -46,7 +46,7 @@ func GenerateExamplesList(c config.Provider) tea.Msg {
 			s.Examples[dirName] = append(s.Examples[dirName], item)
 		}
 
-		e := &tui.Example{
+		e := &exlist.Example{
 			FileName: dirName,
 			FullPath: dirName,
 			Desc:     fmt.Sprintf("%d examples", len(s.Examples[dirName])),
@@ -56,13 +56,13 @@ func GenerateExamplesList(c config.Provider) tea.Msg {
 
 	s.Examples["-"] = rootExamples
 
-	examplesWithDependencies := tui.ExamplesDetails{}
+	examplesWithDependencies := exlist.ExamplesDetails{}
 	for d, e := range s.Examples {
 		if d == "-" {
 			continue
 		}
 		for _, ex := range e {
-			example, ok := ex.(*tui.Example)
+			example, ok := ex.(*exlist.Example)
 			if ok {
 				examplesWithDependencies[example.ExampleID] = example
 			}
@@ -77,7 +77,7 @@ func listDirExamples(path string) ([]os.DirEntry, error) {
 	return examplesList, err
 }
 
-func createExampleList(dir string) ([]*tui.Example, *errorpanel.ErrorMsg) {
+func createExampleList(dir string) ([]*exlist.Example, *errorpanel.ErrorMsg) {
 	kindList, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, &errorpanel.ErrorMsg{
@@ -86,7 +86,7 @@ func createExampleList(dir string) ([]*tui.Example, *errorpanel.ErrorMsg) {
 		}
 	}
 
-	exampleList := make([]*tui.Example, 0)
+	exampleList := make([]*exlist.Example, 0)
 
 	// for the sub list of examples dir
 	for _, sf := range kindList {
@@ -109,7 +109,7 @@ func createExampleList(dir string) ([]*tui.Example, *errorpanel.ErrorMsg) {
 				Cause:  errReadFile,
 			}
 		}
-		var k *tui.Example
+		var k *exlist.Example
 		err = yaml.Unmarshal(yfile, &k)
 		if err != nil {
 			return nil, &errorpanel.ErrorMsg{
@@ -165,7 +165,7 @@ func isYamlFile(fileName string) bool {
 
 func checkForExtraFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 	var (
-		extraK8S  *tui.Example
+		extraK8S  *exlist.Example
 		extraKind int
 	)
 
@@ -196,7 +196,7 @@ func checkForExtraFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 
 func checkForSecretFile(dir string, file string) (int, *errorpanel.ErrorMsg) {
 	var (
-		extraK8S  *tui.Example
+		extraK8S  *exlist.Example
 		extraKind int
 	)
 
