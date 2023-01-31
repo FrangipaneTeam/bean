@@ -8,7 +8,7 @@ import (
 	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
-	"github.com/FrangipaneTeam/bean/tui/pages/elist"
+	"github.com/FrangipaneTeam/bean/tui/pages/exlist"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,7 +24,7 @@ type Model struct {
 	Keymap        *keymap.ListKeyMap
 	keys          *keymap.ListKeyMap
 	common        *common.Model
-	ex            *elist.Model
+	ex            *exlist.Model
 	listOldHeight int
 	centerHeight  int
 }
@@ -122,7 +122,7 @@ func (m *Model) SetWidth(w int) {
 }
 
 // SetExamplesList sets the examples list.
-func (m *Model) SetExamplesList(e *elist.Model) {
+func (m *Model) SetExamplesList(e *exlist.Model) {
 	m.ex = e
 }
 

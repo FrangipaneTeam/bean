@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/FrangipaneTeam/bean/config"
-	"github.com/FrangipaneTeam/bean/internal/exlist"
+	ex "github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
-	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
+	"github.com/FrangipaneTeam/bean/tui/pages/exlist"
 	"github.com/FrangipaneTeam/bean/tui/pages/footer"
 	"github.com/FrangipaneTeam/bean/tui/pages/header"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
@@ -37,7 +37,7 @@ type model struct {
 
 	dialogbox *dialogbox.Model
 
-	pages     *elist.Model
+	pages     *exlist.Model
 	pagesList map[common.PageID]*common.Page
 
 	width        int
@@ -48,7 +48,7 @@ type model struct {
 type tickK8SGet time.Time
 
 // New returns a new model of the examples page.
-func New(e exlist.LoadedExamples, width, height int, c config.Provider) model {
+func New(e ex.LoadedExamples, width, height int, c config.Provider) model {
 	h, v := theme.AppStyle.GetFrameSize()
 
 	rootKeys := keymap.NewListKeyMap()
@@ -77,7 +77,7 @@ func New(e exlist.LoadedExamples, width, height int, c config.Provider) model {
 	rootKeys.EnableRootKeys()
 	dialogKeys.EnableDialogBoxKeys()
 
-	pagesModel := elist.New(rootKeys, e, width-h, height-v-headerHeight-footerHeight)
+	pagesModel := exlist.New(rootKeys, e, width-h, height-v-headerHeight-footerHeight)
 	errorPanel := errorpanel.New(width-h, height-v-headerHeight-footerHeight)
 
 	footer.SetExamplesList(pagesModel)
@@ -90,8 +90,6 @@ func New(e exlist.LoadedExamples, width, height int, c config.Provider) model {
 	commonM := common.New(
 		rootKeys,
 		pagesModel,
-		errorPanel,
-		dialogbox,
 	)
 	footer.SetCommonModel(commonM)
 	k8s := k8s.New(rootKeys, commonM, pagesModel)
@@ -100,7 +98,6 @@ func New(e exlist.LoadedExamples, width, height int, c config.Provider) model {
 		height-v-headerHeight-footerHeight,
 		rootKeys,
 		commonM,
-		pagesModel,
 		c,
 	)
 

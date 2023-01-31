@@ -5,9 +5,7 @@ import (
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
-	"github.com/FrangipaneTeam/bean/tui/pages/elist"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -20,7 +18,6 @@ const (
 // Model is the model of the markdown viewer.
 type Model struct {
 	Viewport viewport.Model
-	pages    *elist.Model
 	keys     *keymap.ListKeyMap
 	config   config.Provider
 	common   *common.Model
@@ -36,7 +33,6 @@ func New(
 	w, h int,
 	keys *keymap.ListKeyMap,
 	common *common.Model,
-	pages *elist.Model,
 	config config.Provider,
 ) *Model {
 	vp := viewport.New(w, h)
@@ -45,7 +41,6 @@ func New(
 		PaddingRight(paddingRight)
 	return &Model{
 		Viewport: vp,
-		pages:    pages,
 		keys:     keys,
 		config:   config,
 		common:   common,
@@ -62,11 +57,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	// Is it a key press?
 	case tea.KeyMsg:
-		// Don't match any of the keys below if we're actively filtering.
-		if m.pages.CurrentList.FilterState() == list.Filtering {
-			break
-		}
-
 		switch {
 		case key.Matches(msg, m.keys.ShowRessources):
 			m.keys.EnableViewPortKeys()
@@ -96,8 +86,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		m.Viewport, cmd = m.Viewport.Update(msg)
 		return m, cmd
 
-	case tea.WindowSizeMsg:
-		m.SetSize(common.Width, common.CenterHeight)
+	// case tea.WindowSizeMsg:
+	// 	m.SetSize(common.Width, common.CenterHeight)
 
 	case common.ResizeMsg:
 		m.SetSize(common.Width, common.CenterHeight)

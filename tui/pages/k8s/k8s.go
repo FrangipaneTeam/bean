@@ -7,7 +7,6 @@ import (
 	"github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 )
@@ -26,9 +25,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.pages.CurrentList.FilterState() == list.Filtering {
-			break
-		}
 		switch {
 		case key.Matches(msg, m.keys.Back):
 			m.SetTickRunning(false)

@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/FrangipaneTeam/bean/internal/exlist"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/internal/theme"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -27,6 +30,7 @@ type Model struct {
 	width, height int
 	spinner       spinner.Model
 	errorRaised   bool
+	keys          *keymap.ListKeyMap
 }
 
 // ErrorMsg should be sent to notify a user of an unrecoverable error.
@@ -70,10 +74,14 @@ func New(w, h int) *Model {
 	}
 	s.Style = lipgloss.NewStyle().Foreground(theme.RedColour).Bold(true)
 
+	keys := keymap.NewListKeyMap()
+	keys.EnableRootKeys()
+
 	return &Model{
 		spinner: s,
 		width:   w,
 		height:  h,
+		keys:    keys,
 	}
 }
 
@@ -88,18 +96,17 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		cmd tea.Cmd
 	)
 
-	switch msg.(type) {
-	// Is it a key press?
-	// case tea.KeyMsg:
-	// 	// Don't match any of the keys below if we're actively filtering.
-	// 	if m.pages.CurrentList.FilterState() == list.Filtering {
-	// 		break
-	// 	}
-	// case tea.WindowSizeMsg:
-	// 	m.SetSize(common.Width, common.CenterHeight)
-
-	// case common.ResizeMsg:
-	// m.SetSize(common.Width, common.CenterHeight)
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.keys.Back):
+			// error handling
+			if m.ErrorRaised() {
+				m.Clear()
+			}
+		}
+	case common.ResizeMsg:
+		m.SetSize(common.Width, common.CenterHeight)
 	}
 	m.spinner, cmd = m.spinner.Update(msg)
 	return m, cmd

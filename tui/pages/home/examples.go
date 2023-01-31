@@ -260,7 +260,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		common.Height = m.height
 		common.Width = m.width
 		common.CenterHeight = centerH
-		return m, nil
+
+		cmd = func() tea.Msg {
+			msg := common.ResizeMsg{}
+			return msg
+		}
+		return m, cmd
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -270,19 +275,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmdList)
 	}
 
-	m.k8s, cmd = m.k8s.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.header, cmd = m.header.Update(msg)
-	cmds = append(cmds, cmd)
-
 	if m.pages.CurrentList.FilterState() != list.Filtering {
 		m.footer, cmd = m.footer.Update(msg)
 		cmds = append(cmds, cmd)
-	}
 
-	if m.errorPanel.ErrorRaised() {
 		m.errorPanel, cmd = m.errorPanel.Update(msg)
+		cmds = append(cmds, cmd)
+
+		m.markdown, cmd = m.markdown.Update(msg)
+		cmds = append(cmds, cmd)
+
+		m.header, cmd = m.header.Update(msg)
+		cmds = append(cmds, cmd)
+
+		m.k8s, cmd = m.k8s.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -292,9 +298,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.common, cmd = m.common.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.markdown, cmd = m.markdown.Update(msg)
 	cmds = append(cmds, cmd)
 
 	// debug

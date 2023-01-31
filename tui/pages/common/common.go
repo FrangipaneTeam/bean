@@ -4,9 +4,7 @@ import (
 	"context"
 
 	"github.com/FrangipaneTeam/bean/internal/keymap"
-	"github.com/FrangipaneTeam/bean/tui/pages/dialogbox"
-	"github.com/FrangipaneTeam/bean/tui/pages/elist"
-	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
+	"github.com/FrangipaneTeam/bean/tui/pages/exlist"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,9 +13,7 @@ import (
 type Model struct {
 	keys          *keymap.ListKeyMap
 	contextToStop []context.CancelFunc
-	ex            *elist.Model
-	errorPanel    *errorpanel.Model
-	dialogbox     *dialogbox.Model
+	ex            *exlist.Model
 	viewName      PageID
 	pages         map[PageID]*Page
 }
@@ -34,16 +30,12 @@ var (
 
 func New(
 	keys *keymap.ListKeyMap,
-	ex *elist.Model,
-	errorpanel *errorpanel.Model,
-	dialogbox *dialogbox.Model,
+	ex *exlist.Model,
 ) *Model {
 	return &Model{
 		keys:          keys,
 		contextToStop: []context.CancelFunc{},
 		ex:            ex,
-		errorPanel:    errorpanel,
-		dialogbox:     dialogbox,
 		viewName:      PRoot,
 		pages:         BeanPages(),
 	}
