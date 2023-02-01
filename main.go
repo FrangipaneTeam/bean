@@ -8,10 +8,8 @@ import (
 	"github.com/FrangipaneTeam/bean/cmd"
 )
 
-var (
-	//go:embed version.txt
-	version string
-)
+//go:embed version.txt
+var version string
 
 func main() {
 	version = strings.TrimSuffix(version, "\n")

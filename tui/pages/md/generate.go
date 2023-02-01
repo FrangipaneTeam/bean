@@ -56,7 +56,7 @@ func GenerateListTested(c config.Provider) tea.Cmd {
 				}
 			}
 
-			var markdownTemplate = `
+			markdownTemplate := `
 # List of tested resources
 
 {{ range $group, $kinds := . }}

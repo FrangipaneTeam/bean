@@ -26,7 +26,7 @@ func Process(rawTemplate string, outputFile string, data interface{}) {
 	// Execute the template
 	err = t.ExecuteTemplate(file, "listTested", data)
 	if err != nil {
-		//TODO: handle error in app
+		// TODO: handle error in app
 		log.Print(err)
 	}
 }

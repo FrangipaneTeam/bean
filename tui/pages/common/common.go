@@ -43,9 +43,7 @@ func New(
 
 // Update updates the model.
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
-	var (
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:

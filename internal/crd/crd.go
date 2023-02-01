@@ -43,7 +43,7 @@ func GetCRDs(path ...string) ([]CRD, error) {
 
 	crds := make([]CRD, 0)
 	for _, file := range listFilesCrds {
-		var w = &CRD{}
+		w := &CRD{}
 
 		y, err := os.ReadFile(file)
 		if err != nil {
