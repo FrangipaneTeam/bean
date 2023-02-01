@@ -14,6 +14,7 @@ const (
 	dialogHeight = 9
 	marginRight  = 2
 )
+
 const (
 	okValue = 1 << iota
 	cancelValue
@@ -73,10 +74,8 @@ func (m Model) Init() tea.Cmd {
 
 // Update updates the model.
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
-	var (
-		// cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+	// cmd  tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:

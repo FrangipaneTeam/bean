@@ -5,9 +5,7 @@ import (
 )
 
 func (m *Model) Back() (*Model, []tea.Cmd) {
-	var (
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 
 	m.ClearContextToStop()
 

@@ -33,6 +33,7 @@ func LoadExamples(c config.Provider) tea.Cmd {
 	}
 }
 
+// ListenForCRDActivity watches for crd file changes and sends a message to the channel.
 func ListenForCRDActivity(ch chan NotifyActivity, c config.Provider) tea.Cmd {
 	return func() tea.Msg {
 		watcher, err := newWatcher()

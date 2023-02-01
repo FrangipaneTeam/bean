@@ -43,7 +43,7 @@ func randSeq(n int) string {
 // Init initializes the model.
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		// tea.EnterAltScreen,
+		tea.EnterAltScreen,
 		m.header.Init(),
 		m.footer.Init(),
 		m.markdown.Init(),
@@ -58,7 +58,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	// Is it a key press?
 	case tea.KeyMsg:
 		// Don't match any of the keys below if we're actively filtering.
 		if m.pages.CurrentList.FilterState() == list.Filtering {
