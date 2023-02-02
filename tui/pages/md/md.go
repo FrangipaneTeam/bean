@@ -2,13 +2,14 @@
 package md
 
 import (
-	"github.com/FrangipaneTeam/bean/config"
-	"github.com/FrangipaneTeam/bean/internal/keymap"
-	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/FrangipaneTeam/bean/config"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
 )
 
 const (

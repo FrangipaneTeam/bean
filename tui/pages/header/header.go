@@ -6,13 +6,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/internal/examples"
 	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -36,6 +37,7 @@ type Model struct {
 	Notification           string
 	NotificationOK         string
 	config                 config.Provider
+	theme                  theme.Theme
 }
 
 // Init initializes the model.
@@ -52,20 +54,22 @@ func (m Model) Init() tea.Cmd {
 
 // New creates a new header model.
 func New(title string, desc string, w int, c config.Provider) *Model {
+	theme := theme.Default()
 	s := spinner.New()
 	s.Spinner = spinner.Points
-	s.Style = lipgloss.NewStyle().Foreground(theme.SpinnerColour)
+	s.Style = lipgloss.NewStyle().Foreground(theme.Colour.Spinner)
 
 	return &Model{
 		Title:          title,
 		Description:    desc,
 		Notification:   "ready",
-		NotificationOK: theme.RunningMark,
+		NotificationOK: theme.CheckMark,
 		spinner:        s,
 		notifyCrds:     make(chan examples.NotifyActivity),
 		notifyExamples: make(chan examples.NotifyActivity),
 		width:          w,
 		config:         c,
+		theme:          theme,
 	}
 }
 
@@ -120,8 +124,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 func (m Model) View() string {
 	nameVersion := lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		theme.TextStyle.Render(m.Title),
-		theme.FeintTextStyle.Padding(0, 0, 0, descriptionPaddingLeft).Render(m.Description),
+		m.theme.TextStyle.Render(m.Title),
+		m.theme.FeintTextStyle.Padding(0, 0, 0, descriptionPaddingLeft).Render(m.Description),
 	)
 
 	header := ""
@@ -130,7 +134,7 @@ func (m Model) View() string {
 	case !m.crdRecentActivity && !m.examplesRecentActivity:
 		header = fmt.Sprintf("%s Watch for new crd/examples files", m.spinner.View())
 	case m.crdRecentActivity:
-		c := lipgloss.NewStyle().Foreground(theme.SpinnerColour).Render("→")
+		c := lipgloss.NewStyle().Foreground(m.theme.Colour.Spinner).Render("→")
 		header = fmt.Sprintf(
 			"%s New CRD files %s %s %ds ago",
 			m.spinner.View(),
@@ -139,7 +143,7 @@ func (m Model) View() string {
 			m.hideNotify,
 		)
 	case m.examplesRecentActivity:
-		c := lipgloss.NewStyle().Foreground(theme.SpinnerColour).Render("→")
+		c := lipgloss.NewStyle().Foreground(m.theme.Colour.Spinner).Render("→")
 		header = fmt.Sprintf(
 			"%s New examples %s %s %ds ago",
 			m.spinner.View(),
@@ -157,7 +161,7 @@ func (m Model) View() string {
 		fmt.Fprintf(
 			&notification,
 			"%s %s (%d r) %s",
-			theme.Divider,
+			m.theme.Divider,
 			t,
 			common.RunningCommands,
 			m.NotificationOK,
@@ -166,7 +170,7 @@ func (m Model) View() string {
 		fmt.Fprintf(
 			&notification,
 			"%s %s %s",
-			theme.Divider,
+			m.theme.Divider,
 			t,
 			m.NotificationOK,
 		)
@@ -177,8 +181,8 @@ func (m Model) View() string {
 		fmt.Fprintf(
 			&dependenciesStatus,
 			"%s dependencies %s",
-			theme.Divider,
-			lipgloss.NewStyle().Foreground(theme.NotificationColour).Render("⚠"),
+			m.theme.Divider,
+			lipgloss.NewStyle().Foreground(m.theme.Colour.Notification).Padding(0, 1, 0, 1).Render("⚠"),
 		)
 	}
 
@@ -188,6 +192,7 @@ func (m Model) View() string {
 		lipgloss.NewStyle().
 			Width(m.width/headerBlocks).
 			Align(lipgloss.Right).
+			PaddingRight(1).
 			Render(dependenciesStatus.String()+notification.String()),
 	)
 
@@ -199,7 +204,7 @@ func (m Model) View() string {
 			Align(lipgloss.Center).
 			Render(nameVersion),
 		header,
-		theme.BorderBottom.Width(m.width).MarginBottom(1).String(),
+		m.theme.BorderBottom.Width(m.width).MarginBottom(1).String(),
 		// tui.BorderBottom.Width(wP).String(),
 	)
 	// banner += "\n" + tui.BorderBottom.Width(m.width).String()

@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FrangipaneTeam/bean/internal/keymap"
-	"github.com/FrangipaneTeam/bean/internal/theme"
-	"github.com/FrangipaneTeam/bean/tui/pages/common"
-	"github.com/FrangipaneTeam/bean/tui/pages/exlist"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/FrangipaneTeam/bean/internal/keymap"
+	"github.com/FrangipaneTeam/bean/internal/theme"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
+	"github.com/FrangipaneTeam/bean/tui/pages/exlist"
 )
 
 // Model is the model of the footer.
@@ -27,6 +28,7 @@ type Model struct {
 	ex            *exlist.Model
 	listOldHeight int
 	centerHeight  int
+	theme         theme.Theme
 }
 
 // Init initializes the model.
@@ -36,13 +38,14 @@ func (m Model) Init() tea.Cmd {
 
 // New creates a new footer model.
 func New(w int, km *keymap.ListKeyMap) *Model {
+	theme := theme.Default()
 	help := help.New()
-	help.Styles.ShortSeparator = theme.Ellipsis
-	help.Styles.ShortKey = theme.HelpText
-	help.Styles.ShortDesc = theme.HelpFeintText
-	help.Styles.FullSeparator = theme.Ellipsis
-	help.Styles.FullKey = theme.HelpText
-	help.Styles.FullDesc = theme.HelpFeintText
+	help.Styles.ShortSeparator = theme.ShortSeparator
+	help.Styles.ShortKey = theme.HelpTextStyle
+	help.Styles.ShortDesc = theme.HelpFeintTextStyle
+	help.Styles.FullSeparator = theme.ShortSeparator
+	help.Styles.FullKey = theme.HelpTextStyle
+	help.Styles.FullDesc = theme.HelpFeintTextStyle
 
 	keys := keymap.NewListKeyMap()
 	keys.EnableRootKeys()
@@ -53,6 +56,7 @@ func New(w int, km *keymap.ListKeyMap) *Model {
 		Help:    help,
 		Keymap:  km,
 		keys:    keys,
+		theme:   theme,
 	}
 }
 
@@ -80,7 +84,7 @@ func (m Model) View() string {
 	footer := strings.Builder{}
 	message := fmt.Sprintf(
 		"%s %s %s",
-		theme.Divider, strings.Trim(m.Message, "\n"), theme.Divider,
+		m.theme.Divider, strings.Trim(m.Message, "\n"), m.theme.Divider,
 	)
 
 	f := lipgloss.NewStyle()
@@ -92,8 +96,8 @@ func (m Model) View() string {
 		lipgloss.Center,
 		lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, false, false, false).
-			BorderForeground(theme.BorderColour).
-			Foreground(theme.TextColour).
+			BorderForeground(m.theme.Colour.Border).
+			Foreground(m.theme.Colour.Primary).
 			Render(message),
 	)
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/FrangipaneTeam/bean/config"
 	ex "github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/internal/keymap"
@@ -16,7 +18,6 @@ import (
 	"github.com/FrangipaneTeam/bean/tui/pages/header"
 	"github.com/FrangipaneTeam/bean/tui/pages/k8s"
 	"github.com/FrangipaneTeam/bean/tui/pages/md"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
@@ -43,21 +44,23 @@ type model struct {
 	width        int
 	height       int
 	centerHeight int
+	theme        theme.Theme
 }
 
 type tickK8SGet time.Time
 
 // New returns a new model of the examples page.
 func New(e ex.LoadedExamples, width, height int, c config.Provider) model {
+	theme := theme.Default()
 	h, v := theme.AppStyle.GetFrameSize()
 
 	rootKeys := keymap.NewListKeyMap()
 	dialogKeys := keymap.NewListKeyMap()
-	version := lipgloss.NewStyle().Foreground(theme.NotificationColour).Render("v" + c.Version)
+	version := lipgloss.NewStyle().Foreground(theme.Colour.Notification).Render("v" + c.Version)
 
 	if c.NewVersion != "" {
 		newVersion := lipgloss.NewStyle().
-			Foreground(theme.NotificationColour).
+			Foreground(theme.Colour.Notification).
 			Render("v" + c.NewVersion)
 		version = fmt.Sprintf("v%s (new version available: %s)", c.Version, newVersion)
 	}
@@ -72,6 +75,9 @@ func New(e ex.LoadedExamples, width, height int, c config.Provider) model {
 	footer := footer.New(width-h, rootKeys)
 	headerHeight := header.Height()
 	footerHeight := footer.Height()
+
+	common.CenterHeight = height - v - headerHeight - footerHeight
+	common.Width = width - h
 
 	// default activated keys
 	rootKeys.EnableRootKeys()
@@ -114,5 +120,6 @@ func New(e ex.LoadedExamples, width, height int, c config.Provider) model {
 		config:    c,
 		pages:     pagesModel,
 		pagesList: common.BeanPages(),
+		theme:     theme,
 	}
 }

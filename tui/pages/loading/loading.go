@@ -4,15 +4,16 @@ package loading
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/FrangipaneTeam/bean/config"
 	"github.com/FrangipaneTeam/bean/internal/examples"
 	"github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/internal/theme"
 	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	"github.com/FrangipaneTeam/bean/tui/pages/home"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type errMsg error
@@ -25,6 +26,7 @@ type model struct {
 	errorPanel    *errorpanel.Model
 	errorRaised   bool
 	config        config.Provider
+	theme         theme.Theme
 }
 
 // New returns a new model of the loading page.
@@ -37,6 +39,7 @@ func New(c config.Provider) model {
 		spinner:    s,
 		errorPanel: errorpanel.New(0, 0),
 		config:     c,
+		theme:      theme.Default(),
 	}
 }
 
@@ -76,7 +79,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.WindowSizeMsg:
-		top, right, bottom, left := theme.AppStyle.GetMargin()
+		top, right, bottom, left := m.theme.AppStyle.GetMargin()
 		m.width, m.height = msg.Width-left-right, msg.Height-top-bottom
 
 		m.errorPanel.SetSize(m.width, m.height)
@@ -103,5 +106,5 @@ func (m model) View() string {
 		str = fmt.Sprintf("%s Loading data... Press q to quit\n\n", m.spinner.View())
 	}
 
-	return theme.AppStyle.Render(str)
+	return m.theme.AppStyle.Render(str)
 }

@@ -1,7 +1,7 @@
 // Package config provides a simple way to load configuration files
 package config
 
-import "os"
+import "github.com/spf13/viper"
 
 // Provider is the configuration provider.
 type Provider struct {
@@ -9,5 +9,5 @@ type Provider struct {
 	Version    string
 	NewVersion string
 	Debug      bool
-	Logger     *os.File
+	Viper      *viper.Viper
 }
