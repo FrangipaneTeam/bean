@@ -1,11 +1,12 @@
 package exlist
 
 import (
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/FrangipaneTeam/bean/internal/exlist"
 	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/internal/theme"
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type Model struct {
@@ -23,19 +24,20 @@ func New(
 	width int,
 	height int,
 ) *Model {
+	theme := theme.Default()
 	delegate := list.NewDefaultDelegate()
 
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
-		BorderForeground(theme.HighlightColour).
-		Foreground(theme.HighlightColour).
+		BorderForeground(theme.List.SelectedTitleBorderColor).
+		Foreground(theme.List.SelectedTitleColor).
 		Bold(true)
 
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
-		BorderForeground(theme.HighlightColour).
-		Foreground(theme.HighlightFeintColour)
+		BorderForeground(theme.List.SelectedDescBorderColor).
+		Foreground(theme.List.SelectedDescColor)
 
-	delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.
-		Foreground(theme.FeintColour)
+	// delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.
+	// 	Foreground(theme.List.SelectedDimDescColor)
 
 	delegate.Styles.FilterMatch = lipgloss.NewStyle().
 		Underline(true).

@@ -3,10 +3,12 @@ package dialogbox
 import (
 	"strings"
 
-	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/FrangipaneTeam/bean/internal/keymap"
+	"github.com/FrangipaneTeam/bean/internal/theme"
 )
 
 const (
@@ -20,31 +22,6 @@ const (
 	cancelValue
 )
 
-var (
-	// Dialog.
-
-	subtle = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-
-	dialogBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#874BFD")).
-			Padding(1, 0).
-			BorderTop(true).
-			BorderLeft(true).
-			BorderRight(true).
-			BorderBottom(true)
-
-	buttonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFF7DB")).
-			Background(lipgloss.Color("#888B7E")).
-			Padding(0, 1).
-			MarginTop(1)
-
-	activeButtonStyle = buttonStyle.Copy().
-				Foreground(lipgloss.Color("#FFF7DB")).
-				Background(lipgloss.Color("#F25D94"))
-)
-
 // Model is the model of the error panel.
 type Model struct {
 	tea.Model
@@ -55,6 +32,7 @@ type Model struct {
 	okValue      string
 	cancelValue  string
 	ActiveButton int
+	theme        theme.Theme
 }
 
 // New returns a new model of the error panel.
@@ -64,6 +42,7 @@ func New(w int, h int, keymap *keymap.ListKeyMap) *Model {
 		height:       h,
 		keys:         keymap,
 		ActiveButton: cancelValue,
+		theme:        theme.Default(),
 	}
 }
 
@@ -94,14 +73,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 func (m Model) View() string {
 	var doc strings.Builder
 
-	okButton := activeButtonStyle.MarginRight(marginRight).Render(m.okValue)
-	cancelButton := buttonStyle.Render(m.cancelValue)
+	okButton := m.theme.DialogBox.ActiveButtonStyle.MarginRight(marginRight).Render(m.okValue)
+	cancelButton := m.theme.DialogBox.ButtonStyle.Render(m.cancelValue)
 	// okButton := buttonStyle.MarginRight(2).Render(m.okValue)
 	// cancelButton := activeButtonStyle.Render(m.cancelValue)
 
 	if m.ActiveButton == cancelValue {
-		okButton = buttonStyle.MarginRight(marginRight).Render(m.okValue)
-		cancelButton = activeButtonStyle.Render(m.cancelValue)
+		okButton = m.theme.DialogBox.ButtonStyle.MarginRight(marginRight).Render(m.okValue)
+		cancelButton = m.theme.DialogBox.ActiveButtonStyle.Render(m.cancelValue)
 	}
 
 	question := lipgloss.NewStyle().
@@ -114,9 +93,9 @@ func (m Model) View() string {
 
 	dialog := lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
-		dialogBoxStyle.Render(ui),
+		m.theme.DialogBox.Style.Render(ui),
 		lipgloss.WithWhitespaceChars("frangipane"),
-		lipgloss.WithWhitespaceForeground(subtle),
+		lipgloss.WithWhitespaceForeground(m.theme.DialogBox.SubtleColour),
 	)
 
 	// dialog = lipgloss.NewStyle().Width(m.width - 2).Render(dialog)

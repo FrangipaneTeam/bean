@@ -8,13 +8,15 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/FrangipaneTeam/bean/tui/pages/errorpanel"
 )
 
 // Kubectl runs a kubectl command.
 func Kubectl(ctx context.Context, k8sCmd *Cmd) tea.Cmd {
 	return func() tea.Msg {
+		k8sCmd.Done = false
 		if k8sCmd.Verb == "" || len(k8sCmd.Files) == 0 {
 			return errorpanel.ErrorMsg{
 				Reason: "no verb or files provided",
@@ -38,8 +40,12 @@ func Kubectl(ctx context.Context, k8sCmd *Cmd) tea.Cmd {
 		defer close(cmdChan)
 
 		go func() {
-			cmd := exec.CommandContext(ctx, "sleep", "10")
-			// cmd := exec.CommandContext(ctx, "kubectl", args...)
+			var cmd *exec.Cmd
+			if k8sCmd.Debug {
+				cmd = exec.CommandContext(ctx, "sleep", "10")
+			} else {
+				cmd = exec.CommandContext(ctx, "kubectl", args...)
+			}
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr

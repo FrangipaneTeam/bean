@@ -1,0 +1,29 @@
+theme:
+    colour:
+        primary: '#F6F5FC'
+        notification: '#FF5F87'
+        spinner: '#FF5F87'
+        border: '#969896'
+        ok: '#B5BD68'
+        warning: '#F0C674'
+        error: '#CC6666'
+        help: '#C5C8C6'
+        feint: '#969896'
+        divider: '#FF5F87'
+    list:
+        selectedTitle: '#FF5F87'
+        selectedTitleBorder: '#FF5F87'
+        selectedDesc: '#81A2BE'
+        selectedDescBorder: '#FF5F87'
+    dialogBox:
+        border: '#874BFD'
+        subtle: '#383838'
+        button:
+            normal: '#FFF7DB'
+            active: '#F25D94'
+            text: '#FFF7DB'
+    symbol:
+        checkMark: ✓
+        runningMark: ⚙
+        errorMark: ✗
+        divider: •

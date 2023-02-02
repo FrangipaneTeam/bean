@@ -1,4 +1,6 @@
 // Package main provides the entry point for the application
+//
+//go:generate go run config-gen.go
 package main
 
 import (

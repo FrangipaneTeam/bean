@@ -3,10 +3,11 @@ package k8s
 import (
 	"context"
 
+	"github.com/charmbracelet/bubbles/progress"
+
 	"github.com/FrangipaneTeam/bean/internal/keymap"
 	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/FrangipaneTeam/bean/tui/pages/exlist"
-	"github.com/charmbracelet/bubbles/progress"
 )
 
 const (
@@ -39,6 +40,7 @@ type Cmd struct {
 	Result   string
 	Cancel   context.CancelFunc
 	FromPage common.PageID
+	Debug    bool
 }
 
 // New returns a new model of the k8s page.

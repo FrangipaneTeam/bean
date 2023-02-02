@@ -5,15 +5,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FrangipaneTeam/bean/internal/exlist"
-	"github.com/FrangipaneTeam/bean/internal/keymap"
-	"github.com/FrangipaneTeam/bean/internal/theme"
-	"github.com/FrangipaneTeam/bean/tui/pages/common"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
+
+	"github.com/FrangipaneTeam/bean/internal/exlist"
+	"github.com/FrangipaneTeam/bean/internal/keymap"
+	"github.com/FrangipaneTeam/bean/internal/theme"
+	"github.com/FrangipaneTeam/bean/tui/pages/common"
 )
 
 const (
@@ -31,6 +32,7 @@ type Model struct {
 	spinner       spinner.Model
 	errorRaised   bool
 	keys          *keymap.ListKeyMap
+	theme         theme.Theme
 }
 
 // ErrorMsg should be sent to notify a user of an unrecoverable error.
@@ -45,6 +47,7 @@ type ErrorMsg struct {
 
 // New returns a new model of the error panel.
 func New(w, h int) *Model {
+	theme := theme.Default()
 	s := spinner.New()
 	s.Spinner = spinner.Spinner{
 		Frames: []string{
@@ -72,16 +75,18 @@ func New(w, h int) *Model {
 		},
 		FPS: time.Second / spinnerFPS,
 	}
-	s.Style = lipgloss.NewStyle().Foreground(theme.RedColour).Bold(true)
+	s.Style = theme.ErrorPanel.Reason
 
 	keys := keymap.NewListKeyMap()
 	keys.EnableRootKeys()
+	keys.Back.SetEnabled(true)
 
 	return &Model{
 		spinner: s,
 		width:   w,
 		height:  h,
 		keys:    keys,
+		theme:   theme,
 	}
 }
 
@@ -93,15 +98,12 @@ func (m Model) Init() tea.Cmd {
 // Update updates the model.
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Back):
-			// error handling
-			if m.ErrorRaised() {
-				m.Clear()
-			}
+			m.Clear()
+			return m, nil
 		}
 	case common.ResizeMsg:
 		m.SetSize(common.Width, common.CenterHeight)
@@ -117,10 +119,10 @@ func (m Model) View() string {
 	reason := lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.spinner.View(),
-		theme.Reason.Margin(marginTop, 0, 0, 0).Render(m.reason),
+		m.theme.ErrorPanel.Reason.Margin(marginTop, 0, 0, 0).Render(m.reason),
 	)
 
-	desc := theme.Cause.Render(wordwrap.String(m.cause, m.width))
+	desc := m.theme.ErrorPanel.Cause.Render(wordwrap.String(m.cause, m.width))
 
 	panel := lipgloss.JoinVertical(
 		lipgloss.Top,
