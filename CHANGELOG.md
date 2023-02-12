@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.6](https://github.com/FrangipaneTeam/bean/compare/v0.0.5...v0.0.6) (2023-02-12)
+
+
+### Features
+
+* user theme ([9b336b8](https://github.com/FrangipaneTeam/bean/commit/9b336b8cffc9238db03760b8aba7b7488a7aa846))
+
 ## [0.0.5](https://github.com/FrangipaneTeam/bean/compare/v0.0.4...v0.0.5) (2023-01-23)
 
 
