@@ -4,7 +4,7 @@
 # install
 
 ```
-go install github.com/FrangipaneTeam/bean@v0.0.5
+go install github.com/FrangipaneTeam/bean@latest
 ```
 
 # usage
