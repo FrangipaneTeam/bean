@@ -5,7 +5,6 @@ on:
       - .github/bean.tape
     tags:
       - "*"
-  workflow_dispatch:
 jobs:
   vhs:
     runs-on: ubuntu-latest
