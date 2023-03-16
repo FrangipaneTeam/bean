@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.7](https://github.com/FrangipaneTeam/bean/compare/v0.0.6...v0.0.7) (2023-03-16)
+
+
+### Miscellaneous
+
+* **deps:** bump actions/setup-go from 3 to 4 ([#65](https://github.com/FrangipaneTeam/bean/issues/65)) ([b7f5fdf](https://github.com/FrangipaneTeam/bean/commit/b7f5fdf78a1013ac420e2e7d7eb80e16c578d687))
+* **deps:** bump github.com/charmbracelet/lipgloss from 0.6.0 to 0.7.0 ([7e33353](https://github.com/FrangipaneTeam/bean/commit/7e33353dc0d10ae36db6ee48f02f686122779810))
+* **deps:** bump github.com/charmbracelet/lipgloss from 0.7.0 to 0.7.1 ([3bab29c](https://github.com/FrangipaneTeam/bean/commit/3bab29c1155907adc32177831914e58a1995ded5))
+* **deps:** bump golang.org/x/net from 0.5.0 to 0.7.0 ([49828a6](https://github.com/FrangipaneTeam/bean/commit/49828a6e0cdc1d19e04f5fbf302462800c19a8ad))
+
 ## [0.0.6](https://github.com/FrangipaneTeam/bean/compare/v0.0.5...v0.0.6) (2023-02-12)
 
 
