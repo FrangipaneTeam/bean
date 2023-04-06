@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/dietsche/rfsnotify v0.0.0-20200716145600-b37be6e4177f
 	github.com/muesli/reflow v0.3.0
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	github.com/tcnksm/go-latest v0.0.0-20170313132115-e3007ae9052e
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
