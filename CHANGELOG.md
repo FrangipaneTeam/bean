@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.8](https://github.com/FrangipaneTeam/bean/compare/v0.0.7...v0.0.8) (2023-05-22)
+
+
+### Miscellaneous
+
+* **deps:** bump github.com/charmbracelet/bubbletea from 0.23.2 to 0.24.0 ([#70](https://github.com/FrangipaneTeam/bean/issues/70)) ([fa78c97](https://github.com/FrangipaneTeam/bean/commit/fa78c97ea55536cb979bf7aef42fa9b6040724b4))
+* **deps:** bump github.com/spf13/cobra from 1.6.1 to 1.7.0 ([#68](https://github.com/FrangipaneTeam/bean/issues/68)) ([a89b755](https://github.com/FrangipaneTeam/bean/commit/a89b755036b78fc6b625574cf7e1f5834d932bc8))
+
 ## [0.0.7](https://github.com/FrangipaneTeam/bean/compare/v0.0.6...v0.0.7) (2023-03-16)
 
 
