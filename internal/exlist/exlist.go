@@ -3,7 +3,6 @@ package exlist
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 
@@ -83,9 +82,8 @@ func (e Example) GetExampleID() string { return e.ExampleID }
 // DependenciesFilesList returns a list of dependencies files.
 func (e Example) DependenciesFilesList() []string {
 	list := []string{}
-	filePath := filepath.Dir(e.FullPath)
 	for k := range e.DependenciesFiles {
-		list = append(list, filePath+"/"+k)
+		list = append(list, k)
 	}
 
 	sort.Strings(list)
@@ -225,7 +223,7 @@ func (e *ExamplesDetails) FindDependenciesSelectorFiles() {
 		for s := range ex.Selectors {
 			for _, ex2 := range *e {
 				if ex2.Metadata.Labels.TestingUpboundIoExampleName == s {
-					ex.DependenciesFiles[ex2.FileName] = true
+					ex.DependenciesFiles[ex2.FullPath] = true
 					if haveExtraFile(ex2.FileName) {
 						ex.DependenciesFiles[fmt.Sprintf("%s.extra", ex2.FileName)] = true
 					}
@@ -244,7 +242,7 @@ func (e *ExamplesDetails) FindDependenciesRefsFiles() {
 		for s := range ex.Refs {
 			for _, ex2 := range *e {
 				if ex2.Metadata.Name == s {
-					ex.DependenciesFiles[ex2.FileName] = true
+					ex.DependenciesFiles[ex2.FullPath] = true
 					if haveExtraFile(ex2.FileName) {
 						ex.DependenciesFiles[fmt.Sprintf("%s.extra", ex2.FileName)] = true
 					}
