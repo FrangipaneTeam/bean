@@ -81,7 +81,7 @@ func BeanPages() map[PageID]*Page {
 
 	errorP := &Page{
 		Keys:         errorKeys,
-		previousPage: PRoot,
+		previousPage: PActual,
 	}
 
 	pages[PRoot] = root
@@ -98,11 +98,13 @@ func BeanPages() map[PageID]*Page {
 
 // RestorePreviousKeys restore the keys.
 func (m *Model) RestorePreviousKeys() tea.Cmd {
+	*m.keys = *m.pages[PRoot].Keys
+
 	if _, ok := m.pages[m.viewName]; ok {
 		previousPage := m.pages[m.viewName].previousPage
-		*m.keys = *m.pages[previousPage].Keys
-	} else {
-		*m.keys = *m.pages[PRoot].Keys
+		if m.pages[previousPage].Keys != nil {
+			*m.keys = *m.pages[previousPage].Keys
+		}
 	}
 	return nil
 }
