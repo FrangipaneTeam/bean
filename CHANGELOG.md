@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.9](https://github.com/FrangipaneTeam/bean/compare/v0.0.8...v0.0.9) (2023-06-07)
+
+
+### Bug Fixes
+
+* **k8s:** bad path in dependencies files list ([#77](https://github.com/FrangipaneTeam/bean/issues/77)) ([cf61f07](https://github.com/FrangipaneTeam/bean/commit/cf61f07c05c2aa75c7550be074a2fba20a5fb8aa))
+* **ui:** bad page when using return key on error ([#80](https://github.com/FrangipaneTeam/bean/issues/80)) ([09635fe](https://github.com/FrangipaneTeam/bean/commit/09635feff240eaaa5e3ef3cd078fcc3c8972a80a))
+
+
+### Miscellaneous
+
+* **deps:** bump github.com/charmbracelet/bubbles from 0.15.0 to 0.16.1 ([#74](https://github.com/FrangipaneTeam/bean/issues/74)) ([15975c1](https://github.com/FrangipaneTeam/bean/commit/15975c1a992a179305fd89635e58a29267ff0d33))
+* **deps:** bump github.com/charmbracelet/bubbletea from 0.24.0 to 0.24.1 ([#71](https://github.com/FrangipaneTeam/bean/issues/71)) ([87dfb5b](https://github.com/FrangipaneTeam/bean/commit/87dfb5b607603b3f40635e3edff4e7e55f976da8))
+* **deps:** bump github.com/charmbracelet/bubbletea from 0.24.1 to 0.24.2 ([#78](https://github.com/FrangipaneTeam/bean/issues/78)) ([011c2da](https://github.com/FrangipaneTeam/bean/commit/011c2dacd1b93e1a1003f33a5c17777d2f8e3d17))
+* **deps:** bump github.com/spf13/viper from 1.15.0 to 1.16.0 ([#72](https://github.com/FrangipaneTeam/bean/issues/72)) ([b5036bb](https://github.com/FrangipaneTeam/bean/commit/b5036bbe1f41fc25c1baf4a8ff5f4303d44f304d))
+
 ## [0.0.8](https://github.com/FrangipaneTeam/bean/compare/v0.0.7...v0.0.8) (2023-05-22)
 
 
