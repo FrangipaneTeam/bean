@@ -19,7 +19,7 @@ jobs:
         with:
           go-version: 'stable'
       - run: "go install github.com/FrangipaneTeam/bean@latest"
-      - uses: charmbracelet/vhs-action@v1
+      - uses: charmbracelet/vhs-action@v2
         with:
           path: '.github/bean.tape'
           install-fonts: true
