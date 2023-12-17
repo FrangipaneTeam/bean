@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.10](https://github.com/FrangipaneTeam/bean/compare/v0.0.9...v0.0.10) (2023-12-17)
+
+
+### Miscellaneous
+
+* **deps:** bump actions/checkout from 3 to 4 ([685379a](https://github.com/FrangipaneTeam/bean/commit/685379af6c21dcd2e7626e8dd5a46066c3b724b8))
+* **deps:** bump charmbracelet/vhs-action from 1 to 2 ([600613b](https://github.com/FrangipaneTeam/bean/commit/600613bb0c746009005b9319d964777127758dbe))
+* **deps:** bump github.com/charmbracelet/lipgloss from 0.7.1 to 0.8.0 ([055f16c](https://github.com/FrangipaneTeam/bean/commit/055f16cda9aad9674414119bc08f88bef8cee6e9))
+* **deps:** bump golang.org/x/net from 0.10.0 to 0.17.0 ([c805e10](https://github.com/FrangipaneTeam/bean/commit/c805e109081363e5272ed37d4c30f5ff0c663f82))
+
 ## [0.0.9](https://github.com/FrangipaneTeam/bean/compare/v0.0.8...v0.0.9) (2023-06-07)
 
 
