@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.11](https://github.com/FrangipaneTeam/bean/compare/v0.0.10...v0.0.11) (2023-12-17)
+
+
+### Miscellaneous
+
+* update generated vhs gif ([56ddf05](https://github.com/FrangipaneTeam/bean/commit/56ddf05968ad7504a9a69e13f65982cc7faf4209))
+
 ## [0.0.10](https://github.com/FrangipaneTeam/bean/compare/v0.0.9...v0.0.10) (2023-12-17)
 
 
