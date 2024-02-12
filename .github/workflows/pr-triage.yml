@@ -9,7 +9,7 @@ jobs:
     name: Labeler
     runs-on: ubuntu-latest
     steps:
-      - uses: fuxingloh/multi-labeler@v2
+      - uses: fuxingloh/multi-labeler@v3
 
   validate-title:
     name: Validate title
