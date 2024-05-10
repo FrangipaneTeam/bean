@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.11](https://github.com/FrangipaneTeam/bean/compare/v0.0.10...v0.0.11) (2024-05-10)
+
+
+### Miscellaneous
+
+* **deps:** bump fuxingloh/multi-labeler from 2 to 4 ([5edc67c](https://github.com/FrangipaneTeam/bean/commit/5edc67c26518925dc6828f09004bb69deb7e1dae))
+* **deps:** bump github.com/charmbracelet/bubbletea ([fd41a4f](https://github.com/FrangipaneTeam/bean/commit/fd41a4fb0d74901c78c174184c89c02614645e7d))
+* **deps:** bump github.com/charmbracelet/lipgloss from 0.8.0 to 0.10.0 ([75e425b](https://github.com/FrangipaneTeam/bean/commit/75e425bf171e324fc7ba26dea01630bc08b31072))
+* **deps:** bump golang.org/x/net from 0.17.0 to 0.23.0 ([93f84f2](https://github.com/FrangipaneTeam/bean/commit/93f84f2036150ad72efb946056f46aff1880634d))
+* **deps:** bump google-github-actions/release-please-action ([1db341d](https://github.com/FrangipaneTeam/bean/commit/1db341d789e3ea0eef7a35940b3b56000db38f0e))
+* **deps:** bump stefanzweifel/git-auto-commit-action from 4 to 5 ([7874a22](https://github.com/FrangipaneTeam/bean/commit/7874a225f775d6381a4d668c2f8f9943e0701347))
+* update generated vhs gif ([56ddf05](https://github.com/FrangipaneTeam/bean/commit/56ddf05968ad7504a9a69e13f65982cc7faf4209))
+
 ## [0.0.10](https://github.com/FrangipaneTeam/bean/compare/v0.0.9...v0.0.10) (2023-12-17)
 
 
