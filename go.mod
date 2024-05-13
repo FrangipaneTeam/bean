@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/charmbracelet/bubbles v0.16.1
-	github.com/charmbracelet/bubbletea v0.25.0
+	github.com/charmbracelet/bubbletea v0.26.2
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/dietsche/rfsnotify v0.0.0-20200716145600-b37be6e4177f
@@ -23,8 +23,8 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
-	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
+	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
@@ -54,9 +54,9 @@ require (
 	github.com/yuin/goldmark v1.5.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/term v0.18.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
